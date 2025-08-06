@@ -21,3 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Aiildo"
 include ':app'
+include ':utils'
+include ':ui'
+include ':feature'
