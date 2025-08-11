@@ -1,11 +1,11 @@
-package com.xinqi.utils.bt.spec
+package com.xinqi.utils.bt.spec.odm
 
 import com.xinqi.utils.log.logE
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 
-object BluetoothCodec {
+object SvakomBtCodec {
 
     /**
      * 查询设备信息
