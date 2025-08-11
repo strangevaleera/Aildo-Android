@@ -42,3 +42,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+/locals
+/locals/*
