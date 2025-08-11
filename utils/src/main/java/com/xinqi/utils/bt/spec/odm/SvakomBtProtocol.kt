@@ -1,8 +1,6 @@
-package com.xinqi.utils.bt.spec
+package com.xinqi.utils.bt.spec.odm
 
 import com.xinqi.utils.log.logE
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * 蓝牙协议 基于SVAKOM蓝牙协议V2的数据结构和常量:
