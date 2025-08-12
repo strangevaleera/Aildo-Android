@@ -5,6 +5,7 @@ import com.xinqi.utils.log.logE
 /**
  * 蓝牙协议 基于SVAKOM蓝牙协议V2的数据结构和常量:
  * @see <a href="https://pcni5ldjg9t4.feishu.cn/wiki/QGNjwmy9Ui8r18k6o4IcPbzVn8f?fromScene=spaceOverview#share-NK14dWk1ToYfNCxct7fcw7usnff"> svakom蓝牙协议
+ * @see <a href="https://pcni5ldjg9t4.feishu.cn/wiki/ZyT1wRiCXiGkiCkCD9HcJjUnnQg"> xinqi固件要求
  */
 object BluetoothProtocol {
     
@@ -40,6 +41,8 @@ object BluetoothProtocol {
         const val CMD_LED_COLOR_CONTROL = 0xA1        // LED颜色控制
         const val CMD_FIND_DEVICE_SOUND = 0xA2        // 寻物声响控制
         const val CMD_OTA_UPGRADE = 0x57              // OTA升级
+        const val CMD_PRESSURE_CTX = 0xF0 // 压力传感器上报
+        const val CMD_DEVICE_CTX = 0xF1 // 设备状态同步
         const val CMD_PHYSICAL_BUTTON_FEEDBACK = 0xFE // 物理按钮反馈
         const val CMD_ERROR_FEEDBACK = 0xFF           // 通用错误反馈
         
