@@ -30,11 +30,8 @@ fun CharacterVideoPlayer(
     // 创建ExoPlayer实例
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            // 设置循环播放
             repeatMode = Player.REPEAT_MODE_ALL
-            // 自动播放
             playWhenReady = true
-            // 设置音量
             volume = 1.0f
         }
     }
@@ -73,22 +70,19 @@ fun CharacterVideoPlayer(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exoPlayer
-                // 隐藏播放器控制UI
                 useController = false
-                // 设置视频缩放模式为填充整个屏幕
                 resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                // 设置背景颜色
                 setBackgroundColor(android.graphics.Color.BLACK)
             }
         },
         modifier = modifier
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
-                    // 获取触摸坐标
+                    //获取触摸坐标
                     val x = offset.x / size.width.toFloat()
                     val y = offset.y / size.height.toFloat()
                     
-                    // 检测点击的身体部位
+                    //检测点击的身体部位
                     val bodyPart = detectBodyPart(x, y)
                     onBodyPartClick(bodyPart, x, y)
                 }
