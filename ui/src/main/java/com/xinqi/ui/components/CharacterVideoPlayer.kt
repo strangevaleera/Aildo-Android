@@ -1,6 +1,10 @@
 package com.xinqi.ui.components
 
+import android.content.Context
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -18,6 +22,7 @@ import com.xinqi.utils.log.logI
 /**
  * 人物视频播放器组件
  * 支持多种动画控制和事件处理
+ * 优化了视频切换时的黑屏问题
  */
 @UnstableApi
 @Composable
@@ -40,12 +45,10 @@ fun CharacterVideoPlayer(
     val continuousClickThreshold = 500L //连续点击时间阈值ms
     val maxClickCount = 5
 
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
-            volume = 1.0f
-        }
-    }
+    //视频过渡管理
+    val videoTransitionManager = remember { VideoTransitionManager(context) }
+    
+    val currentPlayer = remember { videoTransitionManager.initializeMainPlayer() }
     
     var currentVideoInfo by remember { mutableStateOf<VideoInfo?>(null) }
     var isTransitioning by remember { mutableStateOf(false) }
@@ -53,8 +56,8 @@ fun CharacterVideoPlayer(
     //监听播放器状态
     var isVideoReady by remember { mutableStateOf(false) }
     
-    LaunchedEffect(exoPlayer) {
-        exoPlayer.addListener(object : Player.Listener {
+    LaunchedEffect(currentPlayer) {
+        currentPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY && !isVideoReady) {
                     isVideoReady = true
@@ -65,16 +68,23 @@ fun CharacterVideoPlayer(
                 if (playbackState == Player.STATE_ENDED) {
                     when (playMode) {
                         PlayMode.ONCE -> {
-                            exoPlayer.pause()
+                            currentPlayer.pause()
                         }
                         PlayMode.LOOP -> {
-                            exoPlayer.seekTo(0)
-                            exoPlayer.play()
+                            currentPlayer.seekTo(0)
+                            currentPlayer.play()
                         }
                     }
                 }
             }
         })
+    }
+    
+    //预加载视频资源
+    LaunchedEffect(Unit) {
+        val characters = listOf("fig1", "fig2", "fig3")
+        val animations = listOf("chat", "angry", "shy")
+        videoTransitionManager.preloadVideos(characters, animations)
     }
     
     // 根据角色和动画类型加载对应的视频资源
@@ -83,22 +93,18 @@ fun CharacterVideoPlayer(
         
         //如果视频没有变化，不需要重新加载
         if (currentVideoInfo != newVideoInfo) {
-            isTransitioning = true
-            
-            //预加载新视频
-            val videoUri = getCharacterVideoUri(context, character, animationType)
-            val mediaItem = MediaItem.fromUri(videoUri)
-            
-            exoPlayer.repeatMode = when (playMode) {
-                PlayMode.ONCE -> Player.REPEAT_MODE_OFF
-                PlayMode.LOOP -> Player.REPEAT_MODE_ALL
-            }
-            
-            exoPlayer.setMediaItem(mediaItem)
-            exoPlayer.prepare()
-            
-            currentVideoInfo = newVideoInfo
-            isTransitioning = false
+            videoTransitionManager.switchVideo(
+                character = character,
+                animation = animationType,
+                playMode = playMode,
+                onTransitionStart = {
+                    isTransitioning = true
+                },
+                onTransitionComplete = {
+                    isTransitioning = false
+                    currentVideoInfo = newVideoInfo
+                }
+            )
         }
     }
 
@@ -120,75 +126,151 @@ fun CharacterVideoPlayer(
     //组件销毁时释放播放器
     DisposableEffect(Unit) {
         onDispose {
-            exoPlayer.release()
+            videoTransitionManager.release()
         }
     }
     
     //视频播放器视图
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false
-                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                // 设置透明背景，减少黑屏效果
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                // 启用硬件加速
-                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
-            }
-        },
-        modifier = modifier
-            .background(
-                //使用渐变背景，减少视觉冲击
-                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(
-                        androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f),
-                        androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f)
-                    )
-                )
-            )
-            .pointerInput(Unit) {
-                detectTapGestures (
-                    onLongPress = {
-                        offset ->
-                            //获取触摸坐标
-                            val x = offset.x / size.width.toFloat()
-                            val y = offset.y / size.height.toFloat()
+    Box(modifier = modifier) {
+        //主播放器
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = currentPlayer
+                    useController = false
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    // 设置透明背景，减少黑屏效果
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    // 启用硬件加速
+                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                    keepScreenOn = true
+                    //缓冲参数
+                    setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures (
+                        onLongPress = {
+                            offset ->
+                                //获取触摸坐标
+                                val x = offset.x / size.width.toFloat()
+                                val y = offset.y / size.height.toFloat()
 
-                            //检测长按的身体部位
-                            val bodyPart = detectBodyPart(x, y)
-                            onLongPress?.invoke(bodyPart, x, y)
-                    },
+                                //检测长按的身体部位
+                                val bodyPart = detectBodyPart(x, y)
+                                onLongPress?.invoke(bodyPart, x, y)
+                        },
 
-                    onTap = {
-                        offset ->
-                            // 处理点击事件
-                            val currentTime = System.currentTimeMillis()
-                            val x = offset.x / size.width.toFloat()
-                            val y = offset.y / size.height.toFloat()
-                            
-                            // 检查是否为连续点击（位置相近且时间间隔短）
-                            if (currentTime - lastClickTime < continuousClickThreshold && 
-                                isPositionClose(x, y, lastClickPosition.first, lastClickPosition.second)) {
-                                clickCount++
-                                if (clickCount > maxClickCount) {
-                                    clickCount = maxClickCount
+                        onTap = {
+                            offset ->
+                                // 处理点击事件
+                                val currentTime = System.currentTimeMillis()
+                                val x = offset.x / size.width.toFloat()
+                                val y = offset.y / size.height.toFloat()
+                                
+                                // 检查是否为连续点击（位置相近且时间间隔短）
+                                if (currentTime - lastClickTime < continuousClickThreshold && 
+                                    isPositionClose(x, y, lastClickPosition.first, lastClickPosition.second)) {
+                                    clickCount++
+                                    if (clickCount > maxClickCount) {
+                                        clickCount = maxClickCount
+                                    }
+                                } else {
+                                    // 重置点击计数
+                                    clickCount = 1
                                 }
-                            } else {
-                                // 重置点击计数
-                                clickCount = 1
-                            }
-                            
-                            lastClickTime = currentTime
-                            lastClickPosition = Pair(x, y)
+                                
+                                lastClickTime = currentTime
+                                lastClickPosition = Pair(x, y)
 
-                            //检测点击的身体部位
-                            val bodyPart = detectBodyPart(x, y)
-                            onBodyPartClick(bodyPart, x, y)
-                    }
-                )
+                                //检测点击的身体部位
+                                val bodyPart = detectBodyPart(x, y)
+                                onBodyPartClick(bodyPart, x, y)
+                        }
+                    )
+                }
+        )
+        
+        //过渡遮罩层，减少黑屏视觉冲击
+        AnimatedVisibility(
+            visible = isTransitioning,
+            enter = fadeIn(animationSpec = tween(150)),
+            exit = fadeOut(animationSpec = tween(300))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.2f),
+                                androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.1f)
+                            )
+                        )
+                    )
+            )
+        }
+        
+        //加载指示器
+        if (isTransitioning) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.1f))
+            ) {
+                //可以在这里添加加载动画
             }
-    )
+        }
+    }
+}
+
+/**
+ * 执行无缝视频切换
+ */
+private fun performSeamlessSwitch(
+    currentPlayer: ExoPlayer,
+    preloadedPlayer: ExoPlayer
+) {
+    //将预加载的播放器设置为当前播放器
+    preloadedPlayer.playWhenReady = true
+    preloadedPlayer.volume = 1.0f
+    
+    //释放旧的播放器
+    currentPlayer.release()
+    
+    // 注意：需要重新创建播放器实例，因为ExoPlayer不支持直接替换
+    // 可能需要重新创建PlayerView
+}
+
+/**
+ * 执行优化的视频切换
+ */
+private fun performOptimizedSwitch(
+    context: Context,
+    player: ExoPlayer,
+    character: String,
+    animationType: String,
+    playMode: PlayMode
+) {
+    // 先暂停当前播放
+    player.pause()
+
+    // 设置新的媒体项
+    val videoUri = getCharacterVideoUri(context, character, animationType)
+    val mediaItem = MediaItem.fromUri(videoUri)
+    
+    player.repeatMode = when (playMode) {
+        PlayMode.ONCE -> Player.REPEAT_MODE_OFF
+        PlayMode.LOOP -> Player.REPEAT_MODE_ALL
+    }
+
+    player.setMediaItem(mediaItem)
+    player.prepare()
+    
+    // 延迟恢复播放，确保视频已准备好
+    player.playWhenReady = true
 }
 
 /**
