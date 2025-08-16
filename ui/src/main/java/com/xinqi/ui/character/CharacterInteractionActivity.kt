@@ -69,7 +69,19 @@ fun CharacterInteractionScreen(
             character = currentCharacter,
             animationType = currentAnimation,
             onBodyPartClick = { bodyPart, x, y ->
-                viewModel.onBodyPartClick(context, bodyPart, x, y)
+                viewModel.onBodyPartClick(context, currentCharacter, bodyPart, x, y)
+            },
+            onLongPress = { bodyPart, x, y ->
+                viewModel.onBodyPartLongPress(context, currentCharacter, bodyPart, x, y)
+            },
+            onContinuousClick = { count, bodyPart, x, y ->
+                viewModel.onContinuousClick(context, currentCharacter, count, bodyPart, x, y)
+            },
+            // 根据动画类型设置播放模式
+            playMode = when (currentAnimation) {
+                "angry" -> com.xinqi.ui.components.PlayMode.ONCE  // 生气动画只播放一次
+                "shy" -> com.xinqi.ui.components.PlayMode.ONCE   // 害羞动画只播放一次
+                else -> com.xinqi.ui.components.PlayMode.LOOP    // 其他动画循环播放
             },
             onVideoReady = {
                 logI("视频准备就绪")
