@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +36,7 @@ class CharacterInteractionActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
         setContent {
             AildoTheme {
                 Surface(
@@ -69,7 +69,19 @@ fun CharacterInteractionScreen(
             character = currentCharacter,
             animationType = currentAnimation,
             onBodyPartClick = { bodyPart, x, y ->
-                viewModel.onBodyPartClick(context, bodyPart, x, y)
+                viewModel.onBodyPartClick(context, currentCharacter, bodyPart, x, y)
+            },
+            onLongPress = { bodyPart, x, y ->
+                viewModel.onBodyPartLongPress(context, currentCharacter, bodyPart, x, y)
+            },
+            onContinuousClick = { count, bodyPart, x, y ->
+                viewModel.onContinuousClick(context, currentCharacter, count, bodyPart, x, y)
+            },
+            // 根据动画类型设置播放模式
+            playMode = when (currentAnimation) {
+                "angry" -> com.xinqi.ui.components.PlayMode.ONCE  // 生气动画只播放一次
+                "shy" -> com.xinqi.ui.components.PlayMode.ONCE   // 害羞动画只播放一次
+                else -> com.xinqi.ui.components.PlayMode.LOOP    // 其他动画循环播放
             },
             onVideoReady = {
                 logI("视频准备就绪")
@@ -203,7 +215,11 @@ private fun CharacterSelectionButton(
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
-            Text("换男友")
+            Text(
+                text = "换男友",
+                modifier = Modifier.wrapContentSize(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }

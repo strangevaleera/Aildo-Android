@@ -19,4 +19,6 @@ object CharacterModel {
         val onRapidClick:  () -> Unit = {}
     )
 
+
+
 }
