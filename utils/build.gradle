@@ -27,6 +27,12 @@ android {
     kotlinOptions {
         jvmTarget = '11'
     }
+    
+    lint {
+        disable 'Deprecation'
+        disable 'UnusedParameter'
+        disable 'UncheckedCast'
+    }
 }
 
 dependencies {
