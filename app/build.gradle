@@ -39,11 +39,17 @@ android {
     }
     
     composeOptions {
-        kotlinCompilerExtensionVersion "1.5.8"
+        kotlinCompilerExtensionVersion "1.5.10"
+    }
+    
+    lint {
+        disable 'Deprecation'
     }
 }
 
 dependencies {
+    implementation project(':ui')
+
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.material

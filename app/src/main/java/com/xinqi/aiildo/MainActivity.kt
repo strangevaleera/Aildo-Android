@@ -8,13 +8,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xinqi.aiildo.ui.theme.AildoTheme
+import com.xinqi.ui.PageJumper
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen() {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,9 +61,11 @@ fun MainScreen() {
         )
         
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Button(
-            onClick = { /* TODO: 添加功能 */ },
+            onClick = {
+                PageJumper.openCharacterPage(context)
+            },
             modifier = Modifier
                 .wrapContentWidth()
                 .height(56.dp),
