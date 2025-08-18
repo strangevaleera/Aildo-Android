@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import com.xinqi.ui.character.CharacterModel
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.*
 
@@ -40,33 +41,66 @@ class VideoTransitionManager(
     /**
      * 预加载视频资源
      */
-    fun preloadVideos(characters: List<String>, animations: List<String>) {
+    fun preloadVideos(characters: MutableList<String> = mutableListOf (), animations: MutableList<String> = mutableListOf ()) {
         preloadScope.launch {
-            characters.forEach { character ->
-                animations.forEach { animation ->
-                    val key = "${character}_${animation}"
-                    if (!preloadPool.containsKey(key)) {
-                        try {
-                            val player = ExoPlayer.Builder(context).build().apply {
-                                playWhenReady = false
-                                volume = 0f
-                                // 设置预加载参数
-                                setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+            if (characters.isNotEmpty() && animations.isNotEmpty()) {
+                // 加载单独选中项目
+                characters.forEach { character ->
+                    animations.forEach { animation ->
+                        val key = "${character}_${animation}"
+                        if (!preloadPool.containsKey(key)) {
+                            try {
+                                val player = ExoPlayer.Builder(context).build().apply {
+                                    playWhenReady = false
+                                    volume = 0f
+                                    // 设置预加载参数
+                                    setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+                                }
+
+                                val videoUri = getCharacterVideoUri(context, character, animation)
+                                val mediaItem = MediaItem.fromUri(videoUri)
+                                player.setMediaItem(mediaItem)
+                                player.prepare()
+
+                                preloadPool[key] = player
+                                logI("VideoTransitionManager", "预加载成功: $key")
+                            } catch (e: Exception) {
+                                logI("VideoTransitionManager", "预加载失败: $key, 错误: ${e.message}")
                             }
-                            
-                            val videoUri = getCharacterVideoUri(context, character, animation)
-                            val mediaItem = MediaItem.fromUri(videoUri)
-                            player.setMediaItem(mediaItem)
-                            player.prepare()
-                            
-                            preloadPool[key] = player
-                            logI("VideoTransitionManager", "预加载成功: $key")
-                        } catch (e: Exception) {
-                            logI("VideoTransitionManager", "预加载失败: $key, 错误: ${e.message}")
+                        }
+                    }
+                }
+            } else {
+                // 尝试加载其他所有未加载
+                val loadCharacters = CharacterModel.CHARACTERS
+                loadCharacters.forEach { character ->
+                    character.animations.forEach { animation ->
+                        val key = "${character.id}_${animation.type}"
+                        if (!preloadPool.containsKey(key)) {
+                            try {
+                                val player = ExoPlayer.Builder(context).build().apply {
+                                    playWhenReady = false
+                                    volume = 0f
+                                    // 设置预加载参数
+                                    setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+                                }
+
+                                val videoUri = getCharacterVideoUri(context, character.id, animation.type)
+                                val mediaItem = MediaItem.fromUri(videoUri)
+                                player.setMediaItem(mediaItem)
+                                player.prepare()
+
+                                preloadPool[key] = player
+                                logI("VideoTransitionManager", "预加载成功: $key")
+                            } catch (e: Exception) {
+                                logI("VideoTransitionManager", "预加载失败: $key, 错误: ${e.message}")
+                            }
                         }
                     }
                 }
             }
+
+
         }
     }
     
@@ -140,7 +174,7 @@ class VideoTransitionManager(
         keyToRemove?.let { key ->
             val parts = key.split("_")
             if (parts.size == 2) {
-                preloadVideos(listOf(parts[0]), listOf(parts[1]))
+                preloadVideos(mutableListOf(parts[0]), mutableListOf(parts[1]))
             }
         }
     }
@@ -199,26 +233,17 @@ class VideoTransitionManager(
     ): String {
         val baseUri = "android.resource://${context.packageName}/raw"
         
-        return when (character) {
-            "fig1" -> when (animationType) {
-                "chat" -> "$baseUri/fig1_chat"
-                "angry" -> "$baseUri/fig1_angry"
-                "shy" -> "$baseUri/fig1_shy_bottom"
-                else -> "$baseUri/fig1_chat"
-            }
-            "fig2" -> when (animationType) {
-                "chat" -> "$baseUri/fig2_chat"
-                "angry" -> "$baseUri/fig2_angry"
-                "shy" -> "$baseUri/fig2_shy"
-                else -> "$baseUri/fig2_chat"
-            }
-            "fig3" -> when (animationType) {
-                "chat" -> "$baseUri/fig3_chat"
-                "angry" -> "$baseUri/fig3_angry"
-                "shy" -> "$baseUri/fig3_shy"
-                else -> "$baseUri/fig3_chat"
-            }
-            else -> "$baseUri/fig1_chat"
+        // 从CharacterModel获取角色配置
+        val characterConfig = com.xinqi.ui.character.CharacterModel.getCharacter(character)
+        val animationConfig = characterConfig?.animations?.find { it.type == animationType }
+        
+        return if (animationConfig != null) {
+            // 从动画配置中获取视频资源ID
+            val resourceName = context.resources.getResourceEntryName(animationConfig.videoRes)
+            "$baseUri/$resourceName"
+        } else {
+            // 回退到默认配置
+            "$baseUri/fig1_chat"
         }
     }
 }

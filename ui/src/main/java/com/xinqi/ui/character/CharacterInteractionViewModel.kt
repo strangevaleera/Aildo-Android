@@ -58,6 +58,7 @@ class CharacterInteractionViewModel : ViewModel() {
      * 播放指定动画
      */
     fun playAnimation(animationType: String) {
+        logI("play animation: $animationType")
         _currentAnimation.value = animationType
     }
 
@@ -68,17 +69,27 @@ class CharacterInteractionViewModel : ViewModel() {
                         character: String,
                         bodyPart: String, x: Float, y: Float) {
         viewModelScope.launch {
-            val command = generateCommand(bodyPart, x, y)
-
-            //角色回复
-            val res = generateRoleResponse(character, bodyPart, x, y)
-            showResult(context,res?: "别碰了")
-
-            if (command == "LEGS_CENTER") {
-                playAnimation("angry")
-
-                //发送蓝牙指令
-                sendBluetoothCommand(context, command)
+            // 使用新的方法获取动画触发器
+            val animationTrigger = CharacterModel.getAnimationTrigger(character, bodyPart, CharacterModel.ClickType.SINGLE_CLICK)
+            
+            if (animationTrigger != null) {
+                // 播放对应动画
+                playAnimation(animationTrigger)
+                
+                // 获取点击动作配置
+                val clickAction = CharacterModel.getClickAction(character, bodyPart, CharacterModel.ClickType.SINGLE_CLICK)
+                
+                // 显示角色回复
+                clickAction?.response?.let { response ->
+                    showResult(context, response)
+                }
+                
+                // 发送蓝牙指令
+                clickAction?.bluetoothCommand?.let { command ->
+                    sendBluetoothCommand(context, command)
+                }
+            } else {
+                showResult(context, "别碰了")
             }
         }
     }
@@ -87,9 +98,20 @@ class CharacterInteractionViewModel : ViewModel() {
                             character: String,
                             bodyPart: String, x: Float, y: Float) {
         viewModelScope.launch {
-            val command = generateCommand(bodyPart, x, y)
-            if (command == "LEGS_CENTER") {
-                playAnimation("shy")
+            // 使用新的方法获取动画触发器
+            val animationTrigger = CharacterModel.getAnimationTrigger(character, bodyPart, CharacterModel.ClickType.LONG_PRESS)
+            
+            if (animationTrigger != null) {
+                // 播放对应动画
+                playAnimation(animationTrigger)
+                
+                // 获取点击动作配置
+                val clickAction = CharacterModel.getClickAction(character, bodyPart, CharacterModel.ClickType.LONG_PRESS)
+                
+                // 显示角色回复
+                clickAction?.response?.let { response ->
+                    showResult(context, response)
+                }
             }
         }
     }
@@ -98,11 +120,20 @@ class CharacterInteractionViewModel : ViewModel() {
                           character: String,
                           count: Int, bodyPart: String, x: Float, y: Float) {
         viewModelScope.launch {
-            if (count == 5) {
-                val command = generateCommand(bodyPart, x, y)
-                if (command == "LEGS_CENTER") {
-                    playAnimation("shy")
-                    showResult(context,"你好坏哦， 我喜欢")
+            if (count == Constants.RAPID_CLICK_THRESHOLD) {
+                val animationTrigger = CharacterModel.getAnimationTrigger(character, bodyPart, CharacterModel.ClickType.RAPID_CLICK)
+                
+                if (animationTrigger != null) {
+                    // 播放对应动画
+                    playAnimation(animationTrigger)
+                    
+                    // 获取点击动作配置
+                    val clickAction = CharacterModel.getClickAction(character, bodyPart, CharacterModel.ClickType.RAPID_CLICK)
+                    
+                    // 显示角色回复
+                    clickAction?.response?.let { response ->
+                        showResult(context, response)
+                    }
                 }
             }
         }
@@ -119,99 +150,7 @@ class CharacterInteractionViewModel : ViewModel() {
         }
     }
 
-    private fun generateCommand(bodyPart: String, x: Float, y: Float): String? {
-        return when (bodyPart) {
-            "head" -> generateHeadCommand(x, y)
-            "body" -> generateBodyCommand(x, y)
-            "legs" -> generateLegsCommand(x, y)
-            else -> null
-        }
-    }
 
-    private fun generateRoleResponse(character: String,
-                                     bodyPart: String,
-                                     x: Float, y: Float): String? {
-        val response = when (bodyPart) {
-            "head" -> generateHeadResponse(x, y)
-            "body" -> generateBodyResponse(x, y)
-            "legs" -> generateLegsResponse(x, y)
-            else -> null
-        }
-        return if (character == "fig1") {
-            when(response) {
-                "🐔" -> "达咩"
-                else -> "别碰我$response!!!"
-            }
-        } else {
-            "你碰了我的$response"
-        }
-    }
-
-    /**
-     * 生成头部指令
-     */
-    private fun generateHeadCommand(x: Float, y: Float): String? {
-        return when {
-            x < 0.3f -> "HEAD_LEFT"
-            x > 0.7f -> "HEAD_RIGHT"
-            else -> "HEAD_CENTER"
-        }
-    }
-
-    /**
-     * 生成头部回复
-     */
-    private fun generateHeadResponse(x: Float, y: Float): String? {
-        return when {
-            x < 0.3f -> "HEAD_LEFT"
-            x > 0.7f -> "HEAD_RIGHT"
-            else -> "头"
-        }
-    }
-
-    /**
-     * 生成身体指令
-     */
-    private fun generateBodyCommand(x: Float, y: Float): String? {
-        return when {
-            x < 0.3f -> "BODY_LEFT"
-            x > 0.7f -> "BODY_RIGHT"
-            else -> "BODY_CENTER"
-        }
-    }
-
-    /**
-     * 生成身体回复
-     */
-    private fun generateBodyResponse(x: Float, y: Float): String? {
-        return when {
-            x < 0.3f -> "胳膊"
-            x > 0.7f -> "胳膊"
-            else -> "🐻"
-        }
-    }
-
-    /**
-     * 生成腿部指令
-     */
-    private fun generateLegsCommand(x: Float, y: Float): String? {
-        return when {
-            x < 0.3f -> "LEGS_LEFT"
-            x > 0.7f -> "LEGS_RIGHT"
-            else -> "LEGS_CENTER"
-        }
-    }
-
-    /**
-     * 生成腿部回复
-     */
-    private fun generateLegsResponse(x: Float, y: Float): String? {
-        return when {
-            x < 0.3f -> "腿"
-            x > 0.7f -> "腿"
-            else -> "🐔"
-        }
-    }
 
     /**
      * 设置蓝牙连接状态
