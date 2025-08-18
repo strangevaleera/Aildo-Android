@@ -16,6 +16,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.xinqi.ui.character.CharacterModel
 import kotlinx.coroutines.delay
 import com.xinqi.utils.log.logI
 
@@ -82,9 +83,7 @@ fun CharacterVideoPlayer(
     
     //预加载视频资源
     LaunchedEffect(Unit) {
-        val characters = listOf("fig1", "fig2", "fig3")
-        val animations = listOf("chat", "angry", "shy")
-        videoTransitionManager.preloadVideos(characters, animations)
+        videoTransitionManager.preloadVideos()
     }
     
     // 根据角色和动画类型加载对应的视频资源
@@ -348,27 +347,14 @@ private fun getCharacterVideoUri(
     animationType: String
 ): String {
     val baseUri = "android.resource://${context.packageName}/raw"
-    
-    return when (character) {
-        "fig1" -> when (animationType) {
-            "chat" -> "$baseUri/fig1_chat"
-            "angry" -> "$baseUri/fig1_angry"
-            "shy" -> "$baseUri/fig1_shy_bottom"
-            else -> "$baseUri/fig1_chat"
-        }
-        "fig2" -> when (animationType) {
-            "chat" -> "$baseUri/fig2_chat"
-            "angry" -> "$baseUri/fig2_angry"
-            "shy" -> "$baseUri/fig2_shy"
-            else -> "$baseUri/fig2_chat"
-        }
-        "fig3" -> when (animationType) {
-            "chat" -> "$baseUri/fig3_chat"
-            "angry" -> "$baseUri/fig3_angry"
-            "shy" -> "$baseUri/fig3_shy"
-            else -> "$baseUri/fig3_chat"
-        }
-        else -> "$baseUri/fig1_chat"
+    val characterConfig = CharacterModel.getCharacter(character)
+    val animationConfig = characterConfig?.animations?.find { it.type == animationType }
+    return if (animationConfig != null) {
+        val resourceName = context.resources.getResourceEntryName(animationConfig.videoRes)
+        "$baseUri/$resourceName"
+    } else {
+        // 回退到默认配置
+        "$baseUri/fig1_chat"
     }
 }
 
@@ -377,6 +363,8 @@ private fun getCharacterVideoUri(
  * 使用相对坐标系统 (0.0 - 1.0)
  */
 private fun detectBodyPart(x: Float, y: Float): String {
+    // 使用CharacterModel的默认身体部位检测逻辑
+    // todo: 这里可以根据需要传入具体的角色ID来获取更精确的配置
     return when {
         y < 0.25f -> "head"      // 头部区域 (0-25%)
         y < 0.65f -> "body"      // 身体区域 (25-65%)
@@ -414,6 +402,27 @@ fun getBodyPartDetails(x: Float, y: Float): BodyPartInfo {
         x = x,
         y = y
     )
+}
+
+/**
+ * 根据角色ID获取身体部位的详细位置信息
+ */
+fun getBodyPartDetails(characterId: String, x: Float, y: Float): BodyPartInfo? {
+    val bodyPart = CharacterModel.detectBodyPart(characterId, x, y)
+    val clickArea = bodyPart?.let { part ->
+        CharacterModel.getClickAreaResponse(characterId, part.id, x, y)
+    }
+    return if (bodyPart != null && clickArea != null) {
+        BodyPartInfo(
+            part = bodyPart.id,
+            details = clickArea.response,
+            x = x,
+            y = y
+        )
+    } else {
+        // 回退到默认逻辑
+        getBodyPartDetails(x, y)
+    }
 }
 
 /**

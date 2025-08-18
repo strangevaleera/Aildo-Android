@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,13 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
-import com.xinqi.ui.R
 import com.xinqi.ui.components.AnimationControlPanel
 import com.xinqi.ui.components.CharacterVideoPlayer
 import com.xinqi.ui.theme.AildoTheme
@@ -184,27 +181,15 @@ private fun CharacterSelectionButton(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // 人物列表
-                CharacterOption(
-                    name = "人物1",
-                    id = "fig1",
-                    icon = R.drawable.fig1_icon,
-                    onClick = { onCharacterSelect("fig1") }
-                )
-                
-                CharacterOption(
-                    name = "人物2", 
-                    id = "fig2",
-                    icon = R.drawable.default_icon,
-                    onClick = { onCharacterSelect("fig2") }
-                )
-                
-                CharacterOption(
-                    name = "人物3",
-                    id = "fig3",
-                    icon = R.drawable.default_icon,
-                    onClick = { onCharacterSelect("fig3") }
-                )
+                // 人物列表 - 使用CharacterModel配置
+                CharacterModel.CHARACTERS.forEach { character ->
+                    CharacterOption(
+                        name = character.displayName,
+                        id = character.id,
+                        iconRes = character.iconRes,
+                        onClick = { onCharacterSelect(character.id) }
+                    )
+                }
             }
         }
     } else {
@@ -231,29 +216,23 @@ private fun CharacterSelectionButton(
 private fun CharacterOption(
     name: String,
     id: String,
-    @DrawableRes icon: Int,
+    @DrawableRes iconRes: Int,
     onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() }
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = name,
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
-        ) {
-            Image(
-                painter = painterResource(id = icon),
-                contentDescription = "头像",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
+        )
         
         Spacer(modifier = Modifier.width(12.dp))
         

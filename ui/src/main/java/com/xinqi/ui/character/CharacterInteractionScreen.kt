@@ -1,6 +1,8 @@
 package com.xinqi.ui.character
 
 import android.content.Context
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -121,8 +124,8 @@ private fun CharacterVideoPlayer(
                     val y = offset.y / size.height.toFloat()
                     
                     // 检测点击的身体部位
-                    val bodyPart = detectBodyPart(x, y)
-                    onBodyPartClick(bodyPart, x, y)
+                    //val bodyPart = detectBodyPart(character, x, y)
+                    //onBodyPartClick(character, )
                 }
             }
     )
@@ -157,23 +160,14 @@ private fun CharacterSelectionButton(
             Spacer(modifier = Modifier.height(8.dp))
             
             // 人物列表
-            CharacterOption(
-                name = "人物1",
-                id = "fig1",
-                onClick = { onCharacterSelect("fig1") }
-            )
-            
-            CharacterOption(
-                name = "人物2", 
-                id = "fig2",
-                onClick = { onCharacterSelect("fig2") }
-            )
-            
-            CharacterOption(
-                name = "人物3",
-                id = "fig3", 
-                onClick = { onCharacterSelect("fig3") }
-            )
+            CharacterModel.CHARACTERS.forEach { character ->
+                CharacterOption(
+                    name = character.displayName,
+                    id = character.id,
+                    iconRes = character.iconRes,
+                    onClick = { onCharacterSelect(character.id) }
+                )
+            }
         }
     } else {
         // 隐藏状态下的触发按钮
@@ -198,6 +192,7 @@ private fun CharacterSelectionButton(
 private fun CharacterOption(
     name: String,
     id: String,
+    @DrawableRes iconRes: Int,
     onClick: () -> Unit
 ) {
     Row(
@@ -207,11 +202,12 @@ private fun CharacterOption(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = name,
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
         )
         
         Spacer(modifier = Modifier.width(12.dp))
@@ -228,23 +224,21 @@ private fun CharacterOption(
  * 根据角色获取视频资源URI
  */
 private fun getCharacterVideoUri(context: Context, character: String): String {
-    return when (character) {
-        "fig1" -> "android.resource://${context.packageName}/raw/fig1_chat"
-        "fig2" -> "android.resource://${context.packageName}/raw/fig2_chat"
-        "fig3" -> "android.resource://${context.packageName}/raw/fig3_chat"
-        else -> "android.resource://${context.packageName}/raw/fig1_chat"
+    val characterConfig = CharacterModel.getCharacter(character)
+    val animationConfig = characterConfig?.animations?.firstOrNull { it.type == "chat" }
+    
+    return if (animationConfig != null) {
+        "android.resource://${context.packageName}/raw/${animationConfig.videoRes}"
+    } else {
+        // 默认返回fig1_chat
+        "android.resource://${context.packageName}/raw/fig1_chat"
     }
 }
 
 /**
  * 检测点击的身体部位
  */
-private fun detectBodyPart(x: Float, y: Float): String {
-    // 这里可以根据点击坐标判断点击的身体部位
-    // 返回对应的部位标识符，用于蓝牙通信
-    return when {
-        y < 0.3f -> "head"      // 头部区域
-        y < 0.6f -> "body"      // 身体区域  
-        else -> "legs"           // 腿部区域
-    }
+private fun detectBodyPart(character: String, x: Float, y: Float): String? {
+    val bodyPart = CharacterModel.detectBodyPart(character, x, y)
+    return bodyPart?.id
 }
