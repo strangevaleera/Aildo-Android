@@ -10,14 +10,14 @@ import com.xinqi.utils.log.logE
 object BluetoothProtocol {
     
     const val PROTOCOL_VERSION = 2
-    const val PROTOCOL_HEADER = 0x55
+    const val PROTOCOL_HEADER = 0x5A
     const val PACKET_SIZE = 7 //限制统一7bytes数据包
-    const val BROADCAST_IDENTIFIER = 0x53564102 //限制广播数据开头"SVA2"
+    const val BROADCAST_IDENTIFIER = 0x58515431 //限制广播数据开头“XQT1”
     
     object UUID {
-        const val SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB"
-        const val WRITE_CHARACTERISTIC_UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"  //无响应写
-        const val READ_NOTIFY_CHARACTERISTIC_UUID = "0000FFE2-0000-1000-8000-00805F9B34FB"  //读/通知
+        const val SERVICE_UUID = "0000FFF0-0000-1000-8000-00805F9B34FB"
+        const val WRITE_CHARACTERISTIC_UUID = "0000FFF1-0000-1000-8000-00805F9B34FB"  //无响应写
+        const val READ_NOTIFY_CHARACTERISTIC_UUID = "0000FFF2-0000-1000-8000-00805F9B34FB"  //读/通知
     }
     
     //公司ID定义
@@ -40,7 +40,7 @@ object BluetoothProtocol {
         const val CMD_SPECIAL_MODE_CONTROL = 0x12     // 特殊模式控制
         const val CMD_LED_COLOR_CONTROL = 0xA1        // LED颜色控制
         const val CMD_FIND_DEVICE_SOUND = 0xA2        // 寻物声响控制
-        const val CMD_OTA_UPGRADE = 0x57              // OTA升级
+        const val CMD_OTA_UPGRADE = 0x5B              // OTA升级
         const val CMD_PRESSURE_CTX = 0xF0 // 压力传感器上报
         const val CMD_DEVICE_CTX = 0xF1 // 设备状态同步
         const val CMD_PHYSICAL_BUTTON_FEEDBACK = 0xFE // 物理按钮反馈
@@ -146,7 +146,7 @@ object BluetoothProtocol {
  * 注意：8和9，这5个字节，供应商自由支配，预留的初衷是方便盘点库存
  * }
  *
- * @param identifier 1.	data1，data2, data3 : 0x53, 0x56, 0x41, 0x02 ->'S' 'V' 'A' '2'
+ * @param identifier 1.	data1，data2, data3 : 0x58, 0x51, 0x54, 0x31 ->'X' 'Q' 'T' '1'
  * @param protocolVersion 2.	协议版本，本文档版本传`2`   用以后续协议不得不分化时候的判断标识
  * @param productCode    3.   产品编码：此字节作废，填充FF
  * @param uid  4.   全局唯一ID，6个字节，第1个字节为供应商公司ID，后5个字节为流水号（或芯片序列号，能保证唯一即可），需保证出厂后，每个单独玩具的UID都互不相同（不同供应商之间也不能重复），且固定的（OTA升级后也需保持不变）
@@ -272,7 +272,7 @@ data class LedColorControl(
  * BLE SVAKOM协议数据包结构（7字节）
  */
 data class SvakomPacket(
-    val header: Int = BluetoothProtocol.PROTOCOL_HEADER,  // 协议头 0x55
+    val header: Int = BluetoothProtocol.PROTOCOL_HEADER,  // 协议头 0x5A
     val command: Int,                   // 指令编码
     val param1: Int = 0,                // 参数1
     val param2: Int = 0,                // 参数2
