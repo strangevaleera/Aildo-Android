@@ -147,7 +147,7 @@ class AildoBluetoothManager private constructor(private val context: Context) {
             val scanFilter = ScanFilter.Builder()
                 .setManufacturerData(
                     BluetoothProtocol.CompanyId.XIN_QI,
-                    byteArrayOf(0x53, 0x56, 0x41, 0x02), // "SVA2"
+                    byteArrayOf(0x58, 0x51, 0x54, 0x31), // "XQT1"
                     (0..3).map { it.toByte() }.toByteArray()
                 )
                 .build()
