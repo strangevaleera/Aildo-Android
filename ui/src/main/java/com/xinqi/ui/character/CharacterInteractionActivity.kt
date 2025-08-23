@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,13 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
+import com.xinqi.feature.LLMIntegrator
 import com.xinqi.ui.components.AnimationControlPanel
 import com.xinqi.ui.components.CharacterVideoPlayer
 import com.xinqi.ui.theme.AildoTheme
+import com.xinqi.utils.common.ioScope
 import com.xinqi.utils.log.logI
+import kotlinx.coroutines.launch
 
 /**
  * 人物交互界面
@@ -44,11 +49,16 @@ class CharacterInteractionActivity : ComponentActivity() {
                 }
             }
         }
+
+        ioScope.launch {
+            LLMIntegrator.init(baseContext)
+        }
     }
 }
 
 @UnstableApi
 @Composable
+@Preview
 fun CharacterInteractionScreen(
     modifier: Modifier = Modifier,
     viewModel: CharacterInteractionViewModel = viewModel()
@@ -106,7 +116,7 @@ fun CharacterInteractionScreen(
             onAnimationSelect = { animationType ->
                 viewModel.playAnimation(animationType)
             },
-            onToggleVisibility = { /* 添加状态管理 */ },
+            onToggleVisibility = { /* 状态管理 */ },
             modifier = Modifier
                 .align(Alignment.CenterEnd)
         )
@@ -117,6 +127,23 @@ fun CharacterInteractionScreen(
             modifier = Modifier
                 .padding(16.dp)
                 .align(Alignment.TopEnd)
+        )
+
+        // 大模型对话测试按钮（右下角）
+        LLMTrigger(modifier = Modifier
+            .padding(16.dp)
+            .align(Alignment.BottomEnd)
+        ) {
+            //LLMIntegrator.testQuery(context, "")
+            //LLMIntegrator.testQueryStream(context, "")
+        }
+
+        // 底部对话界面
+        ChatInterface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
         )
     }
 }
@@ -132,9 +159,9 @@ private fun BluetoothStatusIndicator(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = if (isConnected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
+            containerColor = if (isConnected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
                 MaterialTheme.colorScheme.errorContainer
         )
     ) {
@@ -178,9 +205,9 @@ private fun CharacterSelectionButton(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // 人物列表 - 使用CharacterModel配置
                 CharacterModel.CHARACTERS.forEach { character ->
                     CharacterOption(
@@ -233,13 +260,140 @@ private fun CharacterOption(
                 .size(40.dp)
                 .clip(CircleShape)
         )
-        
+
         Spacer(modifier = Modifier.width(12.dp))
-        
+
         Text(
             text = name,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+/**
+ * llm对话启动
+ */
+@Composable
+private fun LLMTrigger(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp)
+                .clickable { onClick()}
+            , verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icons.Default.Face
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "llm测试",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+/**
+ * 底部对话界面
+ */
+@Composable
+private fun ChatInterface(
+    modifier: Modifier = Modifier
+) {
+    var userInput by remember { mutableStateOf("") }
+    var aiResponse by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // 回复展示框
+            if (aiResponse.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Text(
+                        text = aiResponse,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+
+            // 输入框和发送按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 文本输入框
+                OutlinedTextField(
+                    value = userInput,
+                    onValueChange = { userInput = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    placeholder = { Text("请输入您的问题...") },
+                    singleLine = true,
+                    enabled = !isLoading,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    )
+                )
+
+                // 发送按钮
+                Button(
+                    onClick = {
+                        if (userInput.isNotEmpty() && !isLoading) {
+                            isLoading = true
+                            aiResponse = "" // 清空之前的回复
+
+                            // 调用LLMIntegrator.query方法
+                            LLMIntegrator.query(
+                                context = context,
+                                query = userInput,
+                                onResponse = { response ->
+                                    aiResponse = response
+                                    isLoading = false
+                                }
+                            )
+                        }
+                    },
+                    enabled = userInput.isNotEmpty() && !isLoading,
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("发送")
+                    }
+                }
+            }
+        }
     }
 }
