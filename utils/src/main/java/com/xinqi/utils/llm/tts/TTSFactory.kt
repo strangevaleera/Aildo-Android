@@ -1,6 +1,7 @@
 package com.xinqi.utils.llm.tts
 
 import android.content.Context
+import com.xinqi.utils.common.ConfigManager
 import com.xinqi.utils.llm.tts.provider.RirixinTTSProvider
 
 /**
@@ -43,16 +44,23 @@ object TTSFactory {
      * 推荐使用此方法，符合日日新官方鉴权要求
      */
     fun createRirixinConfig(
-        ak: String = "0198DC6F18E27CA096D091C36ABB9542",
-        sk: String = "0198DC6F18E27C8FB35BF5B711B3D778",
+        context: Context,
+        ak: String? = null,
+        sk: String? = null,
         baseUrl: String = "https://api.sensenova.cn/v1/audio/speech"
     ): TTSConfig {
+        // 确保ConfigManager已初始化
+        ConfigManager.init(context)
+        
+        val finalAk = ak ?: ConfigManager.getTTSRirixinAk()
+        val finalSk = sk ?: ConfigManager.getTTSRirixinSk()
+        
         return TTSConfig(
             provider = TTSProviderType.RIRIXIN,
             baseUrl = baseUrl,
             apiKey = "",
-            ak = ak,
-            sk = sk,
+            ak = finalAk,
+            sk = finalSk,
             model = TTSModel(
                 modelId = "nova-tts-1", // SenseNova-Audio-Fusion-0603
                 name = "日日新TTS模型",

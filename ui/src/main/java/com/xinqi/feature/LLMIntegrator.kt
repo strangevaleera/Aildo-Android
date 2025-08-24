@@ -14,7 +14,7 @@ object LLMIntegrator {
     fun init(context: Context) {
         mLLmManager = LLMManager.getInstance(context)
 
-        mLLmManager.initializeModel(LLMModel.DOUBAO)
+        mLLmManager.initializeModel(context, LLMModel.DOUBAO)
     }
 
     private const val TEMPLATE = "任务\n" +
