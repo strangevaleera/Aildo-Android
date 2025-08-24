@@ -2,11 +2,17 @@ package com.xinqi.utils.llm.nlp
 
 import android.content.Context
 import com.xinqi.utils.llm.LLMConfig
-import com.xinqi.utils.llm.LLMModel
-import com.xinqi.utils.llm.Message
-import com.xinqi.utils.llm.PromptTemplate
+import com.xinqi.utils.llm.modal.LLMModel
+import com.xinqi.utils.llm.modal.Message
+import com.xinqi.utils.llm.modal.PromptManager
+import com.xinqi.utils.llm.modal.PromptTemplate
 import com.xinqi.utils.llm.nlp.provider.ChatGPTProvider
+import com.xinqi.utils.llm.nlp.provider.ClaudeProvider
 import com.xinqi.utils.llm.nlp.provider.DoubaoProvider
+import com.xinqi.utils.llm.nlp.provider.ErnieBotProvider
+import com.xinqi.utils.llm.nlp.provider.GeminiProvider
+import com.xinqi.utils.llm.nlp.provider.QwenProvider
+import com.xinqi.utils.llm.nlp.provider.SparkDeskProvider
 import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +42,7 @@ class NLPManager private constructor(private val context: Context) {
     
     private val scope = CoroutineScope(Dispatchers.IO)
     private val modelProviders = ConcurrentHashMap<LLMModel, LLMProvider>()
-    private val promptManager = com.xinqi.utils.llm.PromptManager()
+    private val promptManager = PromptManager()
     
     private val eventListeners = mutableListOf<NLPEventListener>()
     
@@ -229,7 +235,7 @@ class NLPManager private constructor(private val context: Context) {
         return modelProviders.containsKey(model)
     }
 
-    fun getPromptManager(): com.xinqi.utils.llm.PromptManager = promptManager
+    fun getPromptManager(): PromptManager = promptManager
 
     fun switchModel(model: LLMModel) {
         if (isModelAvailable(model)) {

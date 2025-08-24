@@ -2,8 +2,8 @@ package com.xinqi.feature
 
 import android.content.Context
 import com.xinqi.utils.llm.LLMManager
-import com.xinqi.utils.llm.LLMModel
-import com.xinqi.utils.llm.PromptTemplate
+import com.xinqi.utils.llm.modal.LLMModel
+import com.xinqi.utils.llm.modal.PromptTemplate
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
 
@@ -74,6 +74,16 @@ object LLMIntegrator {
         mLLmManager.textChat(query, customPrompt) { response ->
             logI("LLMIntegrator.query 收到响应: $response")
             onResponse.invoke(response)
+
+            mLLmManager.textToSpeech(
+                text = response,
+                speed = 1.0f,
+                pitch = 1.0f
+            ) { audioFile ->
+                if (audioFile != null) {
+                    mLLmManager.getTTSManager().playAudio(audioFile)
+                }
+            }
         }
     }
 
@@ -88,17 +98,6 @@ object LLMIntegrator {
         mLLmManager.textChat("你好，介绍下自己", customPrompt) {
             response -> {
                 showResult(context, response)
-
-                /*mLLmManager.textToSpeech(
-                    text = response,
-                    voice = "zh-CN-XiaoxiaoNeural",
-                    speed = 1.0f,
-                    pitch = 1.0f
-                ) { audioFile ->
-                    if (audioFile != null) {
-                        mLLmManager.getTTSManager().playAudio(audioFile)
-                    }
-                }*/
             }
         }
     }

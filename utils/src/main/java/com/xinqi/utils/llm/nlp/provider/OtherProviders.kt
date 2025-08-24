@@ -1,8 +1,9 @@
-package com.xinqi.utils.llm.nlp
+package com.xinqi.utils.llm.nlp.provider
 
 import com.xinqi.utils.llm.LLMConfig
-import com.xinqi.utils.llm.Message
-import com.xinqi.utils.llm.PromptTemplate
+import com.xinqi.utils.llm.modal.Message
+import com.xinqi.utils.llm.modal.PromptTemplate
+import com.xinqi.utils.llm.nlp.LLMProvider
 import com.xinqi.utils.log.logI
 
 /**

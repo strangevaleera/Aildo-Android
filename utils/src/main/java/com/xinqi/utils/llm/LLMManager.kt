@@ -4,7 +4,12 @@ import android.Manifest
 import android.content.Context
 import androidx.annotation.RequiresPermission
 import com.xinqi.utils.llm.asr.ASRManager
+import com.xinqi.utils.llm.modal.LLMModel
+import com.xinqi.utils.llm.modal.Message
+import com.xinqi.utils.llm.modal.PromptManager
+import com.xinqi.utils.llm.modal.PromptTemplate
 import com.xinqi.utils.llm.nlp.NLPManager
+import com.xinqi.utils.llm.tts.TTSFactory
 import com.xinqi.utils.llm.tts.TTSManager
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.CoroutineScope
@@ -63,21 +68,46 @@ class LLMManager private constructor(private val context: Context) {
     }
 
     fun initializeModel(model: LLMModel) {
-        try {
+        //1. init llm model
+        runCatching {
             val config = LLMConfig.getDefaultConfig(model)
             currentConfig = config
             currentModel = model
-            
+
             nlpManager.initializeModelProvider(model, config)
-            
+
             logI("已初始化模型: ${model.displayName}")
             notifyModelChanged(model)
             notifyConfigUpdated(config)
-            
-        } catch (e: Exception) {
-            logI("初始化模型失败: ${e.message}")
-            notifyError("初始化模型失败: ${e.message}")
+        }.onFailure {
+            logI("初始化模型失败: ${it.message}")
+            notifyError("初始化模型失败: ${it.message}")
         }
+        //2. init tts model
+        initTts()
+    }
+
+    private fun initTts() {
+        val config = TTSFactory.createRirixinConfig()
+        ttsManager.initializeProvider(config)
+
+        ttsManager.addEventListener(object : TTSManager.TTSEventListener {
+            override fun onTTSStarted() {
+
+            }
+            override fun onTTSCompleted() {
+
+            }
+            override fun onTTSStopped() {
+
+            }
+            override fun onTTSProgress(progress: Float) {
+
+            }
+            override fun onError(error: String) {
+
+            }
+        })
     }
     
     /**
@@ -174,12 +204,11 @@ class LLMManager private constructor(private val context: Context) {
      */
     fun textToSpeech(
         text: String,
-        voice: String = "zh-CN-XiaoxiaoNeural",
         speed: Float = 1.0f,
         pitch: Float = 1.0f,
         onComplete: (java.io.File?) -> Unit
     ) {
-        ttsManager.textToSpeech(text, voice, speed, pitch, onComplete)
+        ttsManager.textToSpeech(text, null, speed, pitch, onComplete = onComplete)
     }
     
     /**

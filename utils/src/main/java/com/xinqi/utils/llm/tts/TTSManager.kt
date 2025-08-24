@@ -8,24 +8,24 @@ import android.media.AudioTrack
 import android.os.Build
 import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
+import com.xinqi.utils.llm.tts.provider.RirixinTTSProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 /**
  * TTS（文本转语音）管理器
- * 1. 支持多种TTS服务
- * 2. 本地音频播放
+ * 1. 支持多种TTS服务提供商
+ * 2. 统一管理TTS配置和音频播放
+ * 3. 支持流式TTS和文件TTS
  */
 class TTSManager private constructor(private val context: Context) {
     
     companion object {
         private const val TAG = "TTSManager"
-        private const val SAMPLE_RATE = 22050
+        private const val SAMPLE_RATE = 32000
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
         private var BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
@@ -46,6 +46,8 @@ class TTSManager private constructor(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO)
     
     private val eventListeners = mutableListOf<TTSEventListener>()
+    private var currentProvider: TTSProvider? = null
+    private var currentConfig: TTSConfig? = null
     
     /**
      * TTS事件监听器接口
@@ -69,24 +71,54 @@ class TTSManager private constructor(private val context: Context) {
     }
     
     /**
+     * 初始化TTS提供商
+     */
+    fun initializeProvider(config: TTSConfig) {
+        currentConfig = config
+        currentProvider = when (config.provider) {
+            TTSProviderType.RIRIXIN -> RirixinTTSProvider(context, config)
+            else -> {
+                logE("不支持的TTS提供商类型: ${config.provider}")
+                null
+            }
+        }
+        
+        logI("TTS提供商初始化完成: ${config.provider}")
+    }
+    
+    /**
      * 文本转语音
      */
     fun textToSpeech(
         text: String,
-        voice: String = "zh-CN-XiaoxiaoNeural",
+        voice: String? = null,
         speed: Float = 1.0f,
         pitch: Float = 1.0f,
+        volume: Float = 1.0f,
         onComplete: (File?) -> Unit
     ) {
+        if (currentProvider == null) {
+            logE("TTS提供商未初始化")
+            notifyError("TTS提供商未初始化")
+            onComplete(null)
+            return
+        }
+
+        if (currentConfig == null || currentProvider == null) {
+            logE("当前配置， $currentConfig 当前服务商, $currentProvider 异常")
+            return
+        }
+        
         scope.launch {
             try {
                 logI("开始文本转语音: $text")
                 notifyTTSStarted()
-                
-                // 这里可以集成具体的TTS服务
-                // 例如：百度TTS、讯飞TTS、阿里云TTS、Azure TTS等
-                val audioFile = performTTS(text, voice, speed, pitch)
-                
+                val config = currentConfig!!
+                val actualVoice = voice ?: config.voice
+
+                val audioFile = currentProvider!!.textToSpeech(
+                    text, actualVoice, speed, pitch, volume
+                )
                 if (audioFile != null) {
                     logI("TTS完成，音频文件: ${audioFile.absolutePath}")
                     notifyTTSCompleted()
@@ -106,153 +138,50 @@ class TTSManager private constructor(private val context: Context) {
     }
     
     /**
-     * TTS转换
+     * 流式文本转语音
      */
-    private suspend fun performTTS(
-        text: String, 
-        voice: String, 
-        speed: Float, 
-        pitch: Float
-    ): File? {
-        // TODO: 集成具体的TTS服务
-        // 例如：
-        // - 百度语音合成
-        // - 讯飞语音合成
-        // - 阿里云语音合成
-        // - Azure语音合成
-        // - Google TTS
-
-        // 创建模拟音频文件
-        return createMockAudioFile(text)
-    }
-
-    private fun createMockAudioFile(text: String): File? {
-        return try {
-            val fileName = "tts_${System.currentTimeMillis()}.wav"
-            val file = File(context.cacheDir, fileName)
-            
-            // 创建简单的WAV文件头
-            val sampleRate = SAMPLE_RATE
-            val duration = 2 // 2秒
-            val numSamples = sampleRate * duration
-            val dataSize = numSamples * 2 // 16位 = 2字节
-            
-            val header = createWavHeader(sampleRate, dataSize)
-            val audioData = createMockAudioData(numSamples)
-            
-            FileOutputStream(file).use { fos ->
-                fos.write(header)
-                fos.write(audioData)
-            }
-            
-            logI("模拟音频文件已创建: ${file.absolutePath}")
-            file
-            
-        } catch (e: IOException) {
-            logE("创建模拟音频文件失败: ${e.message}")
-            null
-        }
-    }
-    
-    /**
-     * 创建WAV文件头
-     */
-    private fun createWavHeader(sampleRate: Int, dataSize: Int): ByteArray {
-        val header = ByteArray(44)
-        var offset = 0
-        
-        // RIFF头
-        "RIFF".toByteArray().copyInto(header, offset)
-        offset += 4
-        
-        // 文件大小
-        val fileSize = dataSize + 36
-        writeLittleEndianInt(header, offset, fileSize)
-        offset += 4
-        
-        // WAVE标识
-        "WAVE".toByteArray().copyInto(header, offset)
-        offset += 4
-        
-        // fmt子块
-        "fmt ".toByteArray().copyInto(header, offset)
-        offset += 4
-        
-        // 子块大小
-        writeLittleEndianInt(header, offset, 16)
-        offset += 4
-        
-        // 音频格式 (PCM = 1)
-        writeLittleEndianShort(header, offset, 1)
-        offset += 2
-        
-        // 声道数 (单声道 = 1)
-        writeLittleEndianShort(header, offset, 1)
-        offset += 2
-        
-        // 采样率
-        writeLittleEndianInt(header, offset, sampleRate)
-        offset += 4
-        
-        // 字节率
-        val byteRate = sampleRate * 2 // 单声道16位
-        writeLittleEndianInt(header, offset, byteRate)
-        offset += 4
-        
-        // 块对齐
-        writeLittleEndianShort(header, offset, 2)
-        offset += 2
-        
-        // 位深度
-        writeLittleEndianShort(header, offset, 16)
-        offset += 2
-        
-        // data子块
-        "data".toByteArray().copyInto(header, offset)
-        offset += 4
-        
-        // 数据大小
-        writeLittleEndianInt(header, offset, dataSize)
-        
-        return header
-    }
-    
-    /**
-     * 创建模拟音频数据
-     */
-    private fun createMockAudioData(numSamples: Int): ByteArray {
-        val audioData = ByteArray(numSamples * 2)
-        var offset = 0
-        
-        for (i in 0 until numSamples) {
-            val frequency = 440.0
-            val amplitude = 0.3
-            val sample = (amplitude * Math.sin(2 * Math.PI * frequency * i / SAMPLE_RATE) * 32767).toInt()
-            
-            // 写入16位小端序
-            audioData[offset++] = (sample and 0xFF).toByte()
-            audioData[offset++] = (sample shr 8 and 0xFF).toByte()
+    fun textToSpeechStream(
+        text: String,
+        voice: String? = null,
+        speed: Float = 1.0f,
+        pitch: Float = 1.0f,
+        volume: Float = 1.0f,
+        onChunk: (ByteArray, Boolean) -> Unit
+    ) {
+        if (currentProvider == null) {
+            logE("TTS提供商未初始化")
+            notifyError("TTS提供商未初始化")
+            onChunk(ByteArray(0), true)
+            return
         }
         
-        return audioData
+        val config = currentConfig!!
+        val actualVoice = voice ?: config.voice
+        
+        currentProvider!!.textToSpeechStream(
+            text, actualVoice, speed, pitch, volume, onChunk
+        )
     }
     
     /**
-     * 写入小端序整数
+     * 获取可用的语音列表
      */
-    private fun writeLittleEndianInt(array: ByteArray, offset: Int, value: Int) {
-        array[offset] = (value and 0xFF).toByte()
-        array[offset + 1] = (value shr 8 and 0xFF).toByte()
-        array[offset + 2] = (value shr 16 and 0xFF).toByte()
-        array[offset + 3] = (value shr 24 and 0xFF).toByte()
+    suspend fun getAvailableVoices(): List<VoiceInfo> {
+        return currentProvider?.getAvailableVoices() ?: emptyList()
     }
     
     /**
-     * 写入小端序短整数
+     * 检查TTS服务是否可用
      */
-    private fun writeLittleEndianShort(array: ByteArray, offset: Int, value: Int) {
-        array[offset] = (value and 0xFF).toByte()
-        array[offset + 1] = (value shr 8 and 0xFF).toByte()
+    suspend fun isTTSAvailable(): Boolean {
+        return currentProvider?.isAvailable() ?: false
+    }
+    
+    /**
+     * 获取当前TTS提供商信息
+     */
+    fun getCurrentProviderInfo(): String {
+        return currentProvider?.getModelInfo() ?: "未初始化"
     }
     
     /**
