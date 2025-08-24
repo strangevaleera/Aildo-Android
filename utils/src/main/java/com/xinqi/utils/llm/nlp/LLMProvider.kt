@@ -1,7 +1,7 @@
 package com.xinqi.utils.llm.nlp
 
-import com.xinqi.utils.llm.Message
-import com.xinqi.utils.llm.PromptTemplate
+import com.xinqi.utils.llm.modal.Message
+import com.xinqi.utils.llm.modal.PromptTemplate
 
 /**
  * LLM统一模型接口, 接入三方模型需适配
@@ -28,6 +28,6 @@ interface LLMProvider {
     suspend fun generateText(prompt: String, maxTokens: Int = 1000, temperature: Float = 0.7f): String
 
     suspend fun isAvailable(): Boolean
-    
+
     fun getModelInfo(): String
 }

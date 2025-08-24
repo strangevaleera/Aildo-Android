@@ -2,8 +2,8 @@ package com.xinqi.feature
 
 import android.content.Context
 import com.xinqi.utils.llm.LLMManager
-import com.xinqi.utils.llm.LLMModel
-import com.xinqi.utils.llm.PromptTemplate
+import com.xinqi.utils.llm.modal.LLMModel
+import com.xinqi.utils.llm.modal.PromptTemplate
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
 

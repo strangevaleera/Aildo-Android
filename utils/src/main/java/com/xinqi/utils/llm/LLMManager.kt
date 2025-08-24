@@ -4,6 +4,10 @@ import android.Manifest
 import android.content.Context
 import androidx.annotation.RequiresPermission
 import com.xinqi.utils.llm.asr.ASRManager
+import com.xinqi.utils.llm.modal.LLMModel
+import com.xinqi.utils.llm.modal.Message
+import com.xinqi.utils.llm.modal.PromptManager
+import com.xinqi.utils.llm.modal.PromptTemplate
 import com.xinqi.utils.llm.nlp.NLPManager
 import com.xinqi.utils.llm.tts.TTSManager
 import com.xinqi.utils.log.logI

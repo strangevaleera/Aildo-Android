@@ -1,4 +1,4 @@
-package com.xinqi.utils.llm
+package com.xinqi.utils.llm.modal
 
 /**
  * Prompt模板管理

@@ -82,9 +82,8 @@ class TTSManager private constructor(private val context: Context) {
             try {
                 logI("开始文本转语音: $text")
                 notifyTTSStarted()
-                
-                // 这里可以集成具体的TTS服务
-                // 例如：百度TTS、讯飞TTS、阿里云TTS、Azure TTS等
+
+                // 百度TTS、讯飞TTS、阿里云TTS、Azure TTS
                 val audioFile = performTTS(text, voice, speed, pitch)
                 
                 if (audioFile != null) {
@@ -104,10 +103,7 @@ class TTSManager private constructor(private val context: Context) {
             }
         }
     }
-    
-    /**
-     * TTS转换
-     */
+
     private suspend fun performTTS(
         text: String, 
         voice: String, 

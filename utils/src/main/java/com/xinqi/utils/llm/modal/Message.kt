@@ -1,4 +1,6 @@
-package com.xinqi.utils.llm
+package com.xinqi.utils.llm.modal
+
+import java.util.UUID
 
 /**
  * 消息角色枚举
@@ -43,7 +45,7 @@ data class Message(
  * 对话数据类
  */
 data class Conversation(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val messages: List<Message> = emptyList(),
     val model: LLMModel? = null,

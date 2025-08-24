@@ -1,5 +1,7 @@
 package com.xinqi.utils.llm
 
+import com.xinqi.utils.llm.modal.LLMModel
+
 /**
  * LLM配置类
  * 管理各种模型的配置参数
