@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -136,6 +137,14 @@ fun CharacterInteractionScreen(
         ) {
             //LLMIntegrator.testQuery(context, "")
             //LLMIntegrator.testQueryStream(context, "")
+        }
+
+        // 模型设置按钮（左边）
+        ModelSettingsButton(modifier = Modifier
+            .padding(16.dp)
+            .align(Alignment.CenterStart)
+        ) {
+            com.xinqi.ui.PageJumper.openModelSettingsPage(context)
         }
 
         // 底部对话界面
@@ -295,6 +304,35 @@ private fun LLMTrigger(
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "llm测试",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+/**
+ * 模型设置按钮
+ */
+@Composable
+private fun ModelSettingsButton(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp)
+                .clickable { onClick() },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icons.Default.Settings
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "模型设置",
                 style = MaterialTheme.typography.labelSmall
             )
         }

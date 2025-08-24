@@ -6,6 +6,8 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Build
+import com.xinqi.utils.llm.tts.modal.TTSConfig
+import com.xinqi.utils.llm.tts.modal.TTSProviderType
 import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.llm.tts.provider.RirixinTTSProvider

@@ -9,7 +9,7 @@ import com.xinqi.utils.llm.modal.Message
 import com.xinqi.utils.llm.modal.PromptManager
 import com.xinqi.utils.llm.modal.PromptTemplate
 import com.xinqi.utils.llm.nlp.NLPManager
-import com.xinqi.utils.llm.tts.TTSFactory
+import com.xinqi.utils.llm.tts.modal.TTSFactory
 import com.xinqi.utils.llm.tts.TTSManager
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.CoroutineScope
