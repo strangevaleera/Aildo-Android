@@ -352,7 +352,7 @@ private fun ChatInterface(
     val context = LocalContext.current
 
     Card(
-        modifier = modifier,
+        modifier = modifier.imePadding(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
         )
