@@ -32,6 +32,7 @@ android {
         disable 'Deprecation'
         disable 'UnusedParameter'
         disable 'UncheckedCast'
+        disable 'MissingPermission'
     }
 }
 
@@ -40,6 +41,16 @@ dependencies {
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.material
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.lifecycle.viewmodel.ktx
+    
+    // LLM dependencies
+    implementation libs.okhttp
+    implementation libs.retrofit
+    implementation libs.retrofit.converter.gson
+    implementation libs.gson
+    implementation libs.media3.common
+    
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
