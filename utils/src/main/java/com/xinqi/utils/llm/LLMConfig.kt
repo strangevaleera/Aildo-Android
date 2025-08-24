@@ -1,5 +1,7 @@
 package com.xinqi.utils.llm
 
+import android.content.Context
+import com.xinqi.utils.common.ConfigManager
 import com.xinqi.utils.llm.modal.LLMModel
 
 /**
@@ -20,12 +22,14 @@ data class LLMConfig(
     val customHeaders: Map<String, String> = emptyMap()
 ) {
     companion object {
-        fun getDefaultConfig(model: LLMModel): LLMConfig {
+        fun getDefaultConfig(context: Context, model: LLMModel): LLMConfig {
+            // 确保ConfigManager已初始化
+            ConfigManager.init(context)
+            
             return when (model) {
                 LLMModel.DOUBAO -> LLMConfig(
                     model = model,
-                    //todo: use config file
-                    apiKey = "15ec61d7-f4be-4af1-91c3-bf873a14a06a",
+                    apiKey = ConfigManager.getLLMDoubaoApiKey(),
                     baseUrl = "https://ark.cn-beijing.volces.com/api/v3",
                     maxTokens = 4096,
                     temperature = 0.7f

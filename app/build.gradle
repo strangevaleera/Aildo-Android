@@ -15,6 +15,12 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 从local.properties读取配置
+        buildConfigField "String", "LLM_DOUBAO_API_KEY", "\"${getProperty('llm.doubao.apiKey', '')}\""
+        buildConfigField "String", "TTS_RIRIXIN_AK", "\"${getProperty('tts.ririxin.ak', '')}\""
+        buildConfigField "String", "TTS_RIRIXIN_SK", "\"${getProperty('tts.ririxin.sk', '')}\""
+
     }
 
     buildTypes {
@@ -36,6 +42,7 @@ android {
     
     buildFeatures {
         compose true
+        buildConfig true
     }
     
     composeOptions {
@@ -49,6 +56,7 @@ android {
 
 dependencies {
     implementation project(':ui')
+    implementation project(':utils')
 
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
@@ -72,4 +80,25 @@ dependencies {
     
     // Coroutines
     implementation libs.kotlinx.coroutines.android
+}
+
+// 读取local.properties中的属性
+def getProperty(String propertyName, String defaultValue) {
+    def localProperties = new Properties()
+    def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
+    
+    if (localPropertiesFile.exists()) {
+        localProperties.load(new FileInputStream(localPropertiesFile))
+        def propertyValue = localProperties.getProperty(propertyName)
+        println "DEBUG: Reading property '$propertyName' from local.properties = '$propertyValue'"
+        
+        if (propertyValue == null || propertyValue.trim().isEmpty()) {
+            println "DEBUG: Property '$propertyName' is null or empty, using default: '$defaultValue'"
+            propertyValue = defaultValue
+        }
+        return propertyValue
+    } else {
+        println "DEBUG: local.properties file not found, using default: '$defaultValue'"
+        return defaultValue
+    }
 }

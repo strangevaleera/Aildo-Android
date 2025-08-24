@@ -67,10 +67,10 @@ class LLMManager private constructor(private val context: Context) {
         eventListeners.remove(listener)
     }
 
-    fun initializeModel(model: LLMModel) {
+    fun initializeModel(context: Context, model: LLMModel) {
         //1. init llm model
         runCatching {
-            val config = LLMConfig.getDefaultConfig(model)
+            val config = LLMConfig.getDefaultConfig(context, model)
             currentConfig = config
             currentModel = model
 
@@ -84,11 +84,11 @@ class LLMManager private constructor(private val context: Context) {
             notifyError("初始化模型失败: ${it.message}")
         }
         //2. init tts model
-        initTts()
+        initTts(context)
     }
 
-    private fun initTts() {
-        val config = TTSFactory.createRirixinConfig()
+    private fun initTts(context: Context) {
+        val config = TTSFactory.createRirixinConfig(context)
         ttsManager.initializeProvider(config)
 
         ttsManager.addEventListener(object : TTSManager.TTSEventListener {
