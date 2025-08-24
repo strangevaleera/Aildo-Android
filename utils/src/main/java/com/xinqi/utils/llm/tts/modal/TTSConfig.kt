@@ -1,4 +1,4 @@
-package com.xinqi.utils.llm.tts
+package com.xinqi.utils.llm.tts.modal
 
 /**
  * TTS配置类

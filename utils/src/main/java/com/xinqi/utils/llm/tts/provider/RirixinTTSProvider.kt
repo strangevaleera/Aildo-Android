@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.xinqi.utils.llm.tts.*
 import com.xinqi.utils.llm.tts.auth.JWTTokenGenerator
+import com.xinqi.utils.llm.tts.modal.TTSConfig
 import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
 import okhttp3.MediaType.Companion.toMediaType
@@ -146,14 +147,26 @@ class RirixinTTSProvider(
     }
     
     override suspend fun getAvailableVoices(): List<VoiceInfo> {
+        return getDefaultNova1Voices()
+    }
+
+    //todo: move to config file
+    fun getDefaultNova1Voices(): List<VoiceInfo> {
+        return listOf(
+            VoiceInfo("cheerfulvoice-general-male-cn", "通用-中文-男", "中文及中英文混合", "male", "阳光男声"),
+            VoiceInfo("sweetvoice-general-female-cn", "通用-中文-女", "中文及中英文混合", "female", "飒爽女声"),
+            )
+    }
+
+    suspend fun getAvailableVoicesOnline(): List<VoiceInfo> {
         return try {
             val request = Request.Builder()
                 .url("${config.baseUrl}/voices")
                 .addHeader("Authorization", "Bearer ${getValidToken()}")
                 .build()
-            
+
             val response = client.newCall(request).execute()
-            
+
             if (response.isSuccessful) {
                 val responseBody = response.body?.string()
                 parseVoicesResponse(responseBody)
@@ -162,7 +175,7 @@ class RirixinTTSProvider(
                 logE("获取日日新TTS语音列表失败: ${response.code}, 错误信息: $errorBody")
                 emptyList()
             }
-            
+
         } catch (e: Exception) {
             logE("获取日日新TTS语音列表异常: ${e.message}")
             emptyList()

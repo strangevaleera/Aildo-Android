@@ -1,7 +1,8 @@
-package com.xinqi.utils.llm.tts
+package com.xinqi.utils.llm.tts.modal
 
 import android.content.Context
 import com.xinqi.utils.common.ConfigManager
+import com.xinqi.utils.llm.tts.TTSProvider
 import com.xinqi.utils.llm.tts.provider.RirixinTTSProvider
 
 /**
@@ -133,6 +134,43 @@ object TTSFactory {
             defaultVolume = 1.0f,
             outputFormat = "wav",
             sampleRate = 16000
+        )
+    }
+
+    fun getSupportTTSModels(): List<TTSModel> {
+        // 预定义的TTS模型列表
+        return listOf(
+            TTSModel(
+                modelId = "nova-tts-1",
+                name = "日日新TTS模型",
+                description = "日日新提供的文本转语音服务",
+                maxTextLength = 2000,
+                supportedLanguages = listOf("zh-CN", "en-US", "ja-JP")
+            ),
+            TTSModel(
+                modelId = "SenseNova-Audio-Fusion-0603",
+                name = "日日新-语音大模型-语音合成（音色融合）",
+                description = "日日新提供的文本转语音服务",
+                maxTextLength = 2000,
+                supportedLanguages = listOf("zh-CN", "en-US", "ja-JP")
+            ),
+            TTSModel(
+                modelId = "azure-tts-1",
+                name = "Azure TTS模型",
+                description = "微软Azure提供的文本转语音服务",
+                maxTextLength = 3000,
+                supportedLanguages = listOf("zh-CN", "en-US", "ja-JP")
+            )
+        )
+    }
+
+    fun getDefaultTTSModel(): TTSModel {
+        return TTSModel(
+            modelId = "nova-tts-1",
+            name = "日日新TTS模型",
+            description = "日日新提供的文本转语音服务",
+            maxTextLength = 2000,
+            supportedLanguages = listOf("zh-CN", "en-US", "ja-JP")
         )
     }
 }
