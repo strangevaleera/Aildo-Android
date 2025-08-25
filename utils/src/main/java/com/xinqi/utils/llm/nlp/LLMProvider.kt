@@ -1,7 +1,7 @@
 package com.xinqi.utils.llm.nlp
 
-import com.xinqi.utils.llm.modal.Message
-import com.xinqi.utils.llm.modal.PromptTemplate
+import com.xinqi.utils.llm.model.Message
+import com.xinqi.utils.llm.model.PromptTemplate
 
 /**
  * LLM统一模型接口, 接入三方模型需适配

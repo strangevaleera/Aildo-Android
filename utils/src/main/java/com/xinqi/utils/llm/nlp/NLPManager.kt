@@ -2,10 +2,10 @@ package com.xinqi.utils.llm.nlp
 
 import android.content.Context
 import com.xinqi.utils.llm.LLMConfig
-import com.xinqi.utils.llm.modal.LLMModel
-import com.xinqi.utils.llm.modal.Message
-import com.xinqi.utils.llm.modal.PromptManager
-import com.xinqi.utils.llm.modal.PromptTemplate
+import com.xinqi.utils.llm.model.LLMModel
+import com.xinqi.utils.llm.model.Message
+import com.xinqi.utils.llm.model.PromptManager
+import com.xinqi.utils.llm.model.PromptTemplate
 import com.xinqi.utils.llm.nlp.provider.ChatGPTProvider
 import com.xinqi.utils.llm.nlp.provider.ClaudeProvider
 import com.xinqi.utils.llm.nlp.provider.DoubaoProvider

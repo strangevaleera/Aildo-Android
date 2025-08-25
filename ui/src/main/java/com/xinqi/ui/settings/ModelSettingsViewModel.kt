@@ -4,12 +4,13 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xinqi.utils.llm.LLMManager
-import com.xinqi.utils.llm.modal.LLMModel
-import com.xinqi.utils.llm.tts.modal.TTSConfig
-import com.xinqi.utils.llm.tts.VoiceInfo
-import com.xinqi.utils.llm.tts.modal.TTSFactory
-import com.xinqi.utils.llm.tts.modal.TTSModel
-import com.xinqi.utils.llm.tts.modal.TTSProviderType
+import com.xinqi.utils.llm.model.LLMModel
+import com.xinqi.utils.llm.tts.model.VoiceInfo
+import com.xinqi.utils.llm.tts.config.ModelConfig
+import com.xinqi.utils.llm.tts.config.VoiceConfig
+import com.xinqi.utils.llm.tts.model.TTSFactory
+import com.xinqi.utils.llm.tts.model.TTSModel
+import com.xinqi.utils.llm.tts.model.TTSProviderType
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,13 +57,8 @@ class ModelSettingsViewModel : ViewModel() {
     fun loadCurrentSettings(llmManager: LLMManager) {
         viewModelScope.launch {
             try {
-                // 获取当前LLM模型
                 val currentModel = llmManager.getCurrentModel()
                 _currentLLMModel.value = currentModel
-
-                // 获取当前TTS配置（如果有的话）
-                // 注意：LLMManager可能没有直接提供TTS配置的getter方法
-                // 这里我们使用默认值，实际应用中可能需要从其他地方获取
                 logI("加载当前设置完成，LLM模型: ${currentModel.displayName}")
             } catch (e: Exception) {
                 logI("加载当前设置失败: ${e.message}")
@@ -82,7 +78,6 @@ class ModelSettingsViewModel : ViewModel() {
                 logI("加载音色列表完成，共${voices.size}个音色")
             } catch (e: Exception) {
                 logI("加载音色列表失败: ${e.message}")
-                // 如果加载失败，提供一些默认音色
                 _availableVoices.value = getDefaultVoices()
             } finally {
                 _isLoading.value = false
@@ -101,11 +96,18 @@ class ModelSettingsViewModel : ViewModel() {
 
     /**
      * 更新TTS模型选择
+     * 选择模型后自动更新对应的音色列表
      */
     fun updateTTSModel(llmManager: LLMManager, model: TTSModel) {
         pendingTTSModel = model
         _currentTTSModel.value = model
         logI("选择TTS模型: ${model.name}")
+        
+        // 自动更新音色列表
+        updateAvailableVoicesForModel(model.modelId)
+        
+        // 自动选择默认音色（如果当前音色不在新模型中可用）
+        updateDefaultVoiceForModel(model.modelId)
     }
 
     /**
@@ -115,6 +117,49 @@ class ModelSettingsViewModel : ViewModel() {
         pendingVoice = voice
         _currentVoice.value = voice
         logI("选择TTS音色: $voice")
+    }
+
+    /**
+     * 根据模型ID更新可用的音色列表
+     */
+    private fun updateAvailableVoicesForModel(modelId: String) {
+        viewModelScope.launch {
+            try {
+                val voices = VoiceConfig.getVoicesForModel(modelId)
+                _availableVoices.value = voices
+                logI("已更新音色列表，模型: $modelId, 音色数量: ${voices.size}")
+            } catch (e: Exception) {
+                logI("更新音色列表失败: ${e.message}")
+                // 如果更新失败，使用默认音色
+                _availableVoices.value = getDefaultVoices()
+            }
+        }
+    }
+
+    /**
+     * 为新选择的模型自动选择默认音色
+     */
+    private fun updateDefaultVoiceForModel(modelId: String) {
+        viewModelScope.launch {
+            try {
+                val voices = VoiceConfig.getVoicesForModel(modelId)
+                if (voices.isNotEmpty()) {
+                    // 检查当前音色是否在新模型中可用
+                    val currentVoiceId = _currentVoice.value
+                    val isCurrentVoiceAvailable = voices.any { it.voiceId == currentVoiceId }
+                    
+                    if (!isCurrentVoiceAvailable) {
+                        // 如果当前音色不可用，选择第一个可用的音色
+                        val defaultVoice = voices.first()
+                        _currentVoice.value = defaultVoice.voiceId
+                        pendingVoice = defaultVoice.voiceId
+                        logI("已自动选择默认音色: ${defaultVoice.name} (${defaultVoice.voiceId})")
+                    }
+                }
+            } catch (e: Exception) {
+                logI("更新默认音色失败: ${e.message}")
+            }
+        }
     }
 
     /**
@@ -135,21 +180,15 @@ class ModelSettingsViewModel : ViewModel() {
 
                 // 应用TTS设置
                 pendingTTSModel?.let { ttsModel ->
-                    pendingVoice?.let { voice ->
+                    pendingVoice?.let { selectVoice ->
                         // 创建新的TTS配置
-                        val newTTSConfig = TTSConfig(
-                            provider = TTSProviderType.RIRIXIN, // 默认使用日日新
-                            baseUrl = "https://api.sensenova.cn/v1/audio/speech",
-                            apiKey = "", // 这里需要从配置中获取
-                            ak = "", // 这里需要从配置中获取
-                            sk = "", // 这里需要从配置中获取
-                            model = ttsModel,
-                            voice = voice
-                        )
+                        val newTTSConfig = TTSFactory.getTTSConfigByModel(context, ttsModel).apply {
+                            voice = selectVoice
+                        }
 
                         // 重新初始化TTS提供商
                         llmManager.getTTSManager().initializeProvider(newTTSConfig)
-                        logI("已更新TTS配置: ${ttsModel.name}, 音色: $voice")
+                        logI("已更新TTS配置: ${ttsModel.name}, 音色: $selectVoice")
                     }
                 }
 
@@ -168,8 +207,11 @@ class ModelSettingsViewModel : ViewModel() {
     }
 
     /**
-     * 获取默认音色列表（当API调用失败时的备用方案）
+     * 获取默认音色列表
+     *
+     * 垃圾代码
      */
+    @Deprecated("垃圾代码")
     private fun getDefaultVoices(): List<VoiceInfo> {
         return listOf(
             VoiceInfo(
@@ -177,28 +219,32 @@ class ModelSettingsViewModel : ViewModel() {
                 name = "欢快男声-中文",
                 language = "zh-CN",
                 gender = "male",
-                description = "适合日常对话的欢快男声"
+                description = "适合日常对话的欢快男声",
+                modelId = ModelConfig.MODEL_ID_RIRIXIN_NOVA
             ),
             VoiceInfo(
                 voiceId = "cheerfulvoice-general-female-cn",
                 name = "欢快女声-中文",
                 language = "zh-CN",
                 gender = "female",
-                description = "适合日常对话的欢快女声"
+                description = "适合日常对话的欢快女声",
+                modelId = ModelConfig.MODEL_ID_RIRIXIN_NOVA
             ),
             VoiceInfo(
                 voiceId = "gentlevoice-general-male-cn",
                 name = "温柔男声-中文",
                 language = "zh-CN",
                 gender = "male",
-                description = "适合温柔对话的男声"
+                description = "适合温柔对话的男声",
+                modelId = ModelConfig.MODEL_ID_RIRIXIN_NOVA
             ),
             VoiceInfo(
                 voiceId = "gentlevoice-general-female-cn",
                 name = "温柔女声-中文",
                 language = "zh-CN",
                 gender = "female",
-                description = "适合温柔对话的女声"
+                description = "适合温柔对话的女声",
+                modelId = ModelConfig.MODEL_ID_RIRIXIN_NOVA
             )
         )
     }
@@ -216,17 +262,22 @@ class ModelSettingsViewModel : ViewModel() {
     fun resetToDefaults() {
         pendingLLMModel = LLMModel.DOUBAO
         pendingTTSModel = TTSModel(
-            modelId = "nova-tts-1",
+            provider = TTSProviderType.RIRIXIN,
+            modelId = ModelConfig.MODEL_ID_RIRIXIN_NOVA,
             name = "日日新TTS模型",
             description = "日日新提供的文本转语音服务",
             maxTextLength = 2000,
-            supportedLanguages = listOf("zh-CN", "en-US", "ja-JP")
+            supportedLanguages = listOf("zh-CN", "en-US", "ja-JP"),
+            availableVoices = VoiceConfig.getVoicesForModel(ModelConfig.MODEL_ID_RIRIXIN_NOVA)
         )
         pendingVoice = "cheerfulvoice-general-male-cn"
 
         _currentLLMModel.value = pendingLLMModel!!
         _currentTTSModel.value = pendingTTSModel!!
         _currentVoice.value = pendingVoice!!
+
+        // 更新音色列表
+        updateAvailableVoicesForModel(ModelConfig.MODEL_ID_RIRIXIN_NOVA)
 
         logI("已重置设置到默认值")
     }

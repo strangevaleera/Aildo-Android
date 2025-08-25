@@ -4,7 +4,10 @@ import android.content.Context
 import com.google.gson.Gson
 import com.xinqi.utils.llm.tts.*
 import com.xinqi.utils.llm.tts.auth.JWTTokenGenerator
-import com.xinqi.utils.llm.tts.modal.TTSConfig
+import com.xinqi.utils.llm.tts.config.ModelConfig
+import com.xinqi.utils.llm.tts.config.VoiceConfig
+import com.xinqi.utils.llm.tts.model.TTSConfig
+import com.xinqi.utils.llm.tts.model.VoiceInfo
 import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
 import okhttp3.MediaType.Companion.toMediaType
@@ -64,7 +67,8 @@ class RirixinTTSProvider(
         voice: String,
         speed: Float,
         pitch: Float,
-        volume: Float
+        volume: Float,
+        emotion: String?
     ): File? {
         return try {
             logI("日日新TTS开始转换: $text")
@@ -147,15 +151,7 @@ class RirixinTTSProvider(
     }
     
     override suspend fun getAvailableVoices(): List<VoiceInfo> {
-        return getDefaultNova1Voices()
-    }
-
-    //todo: move to config file
-    fun getDefaultNova1Voices(): List<VoiceInfo> {
-        return listOf(
-            VoiceInfo("cheerfulvoice-general-male-cn", "通用-中文-男", "中文及中英文混合", "male", "阳光男声"),
-            VoiceInfo("sweetvoice-general-female-cn", "通用-中文-女", "中文及中英文混合", "female", "飒爽女声"),
-            )
+        return VoiceConfig.RIRIXIN_VOICES[ModelConfig.MODEL_ID_RIRIXIN_NOVA] ?: emptyList()
     }
 
     suspend fun getAvailableVoicesOnline(): List<VoiceInfo> {

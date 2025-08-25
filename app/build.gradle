@@ -20,6 +20,8 @@ android {
         buildConfigField "String", "LLM_DOUBAO_API_KEY", "\"${getProperty('llm.doubao.apiKey', '')}\""
         buildConfigField "String", "TTS_RIRIXIN_AK", "\"${getProperty('tts.ririxin.ak', '')}\""
         buildConfigField "String", "TTS_RIRIXIN_SK", "\"${getProperty('tts.ririxin.sk', '')}\""
+        buildConfigField "String", "TTS_MINIMAX_GROUP_ID", "\"${getProperty('tts.minimax.grouID', '')}\""
+        buildConfigField "String", "TTS_MINIMAX_API_KEY", "\"${getProperty('tts.minimax.apiKey', '')}\""
 
     }
 

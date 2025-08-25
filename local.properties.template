@@ -19,6 +19,11 @@ llm.doubao.baseUrl=https://ark.cn-beijing.volces.com/api/v3
 tts.ririxin.ak=your_ririxin_ak_here
 tts.ririxin.sk=your_ririxin_sk_here
 
+# Minimax TTS配置
+# 替换为你的实际配置值
+tts.minimax.apiKey=your_minimax_api_key_here
+tts.minimax.groupId=your_minimax_group_id_here
+
 # 使用说明：
 # 1. 复制此文件为 local.properties
 # 2. 将 sdk.dir 修改为你的Android SDK路径
