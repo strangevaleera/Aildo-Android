@@ -4,12 +4,12 @@ import android.Manifest
 import android.content.Context
 import androidx.annotation.RequiresPermission
 import com.xinqi.utils.llm.asr.ASRManager
-import com.xinqi.utils.llm.modal.LLMModel
-import com.xinqi.utils.llm.modal.Message
-import com.xinqi.utils.llm.modal.PromptManager
-import com.xinqi.utils.llm.modal.PromptTemplate
+import com.xinqi.utils.llm.model.LLMModel
+import com.xinqi.utils.llm.model.Message
+import com.xinqi.utils.llm.model.PromptManager
+import com.xinqi.utils.llm.model.PromptTemplate
 import com.xinqi.utils.llm.nlp.NLPManager
-import com.xinqi.utils.llm.tts.modal.TTSFactory
+import com.xinqi.utils.llm.tts.model.TTSFactory
 import com.xinqi.utils.llm.tts.TTSManager
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.CoroutineScope

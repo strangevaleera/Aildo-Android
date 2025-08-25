@@ -1,4 +1,4 @@
-package com.xinqi.utils.llm.modal
+package com.xinqi.utils.llm.model
 
 /**
  * LLM模型枚举

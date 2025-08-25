@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xinqi.ui.theme.AildoTheme
 import com.xinqi.utils.llm.LLMManager
-import com.xinqi.utils.llm.modal.LLMModel
-import com.xinqi.utils.llm.tts.VoiceInfo
-import com.xinqi.utils.llm.tts.modal.TTSFactory
-import com.xinqi.utils.llm.tts.modal.TTSModel
+import com.xinqi.utils.llm.model.LLMModel
+import com.xinqi.utils.llm.tts.model.VoiceInfo
+import com.xinqi.utils.llm.tts.model.TTSFactory
+import com.xinqi.utils.llm.tts.model.TTSModel
 import kotlinx.coroutines.launch
 
 /**

@@ -28,6 +28,12 @@ object ConfigInitializer {
             ak = BuildConfig.TTS_RIRIXIN_AK,
             sk = BuildConfig.TTS_RIRIXIN_SK
         )
+
+        // 初始化minimax配置
+        ConfigManager.setTTSMinimaxConfig(
+            apiKey = BuildConfig.TTS_MINIMAX_API_KEY,
+            groupId = BuildConfig.TTS_MINIMAX_GROUP_ID
+        )
         
         logI("=== Config Initialization Complete ===")
     }

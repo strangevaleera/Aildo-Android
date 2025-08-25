@@ -14,6 +14,8 @@ object ConfigManager {
     private const val KEY_LLM_DOUBAO_API_KEY = "llm_doubao_api_key"
     private const val KEY_TTS_RIRIXIN_AK = "tts_ririxin_ak"
     private const val KEY_TTS_RIRIXIN_SK = "tts_ririxin_sk"
+    private const val KEY_TTS_MINIMAX_API_KEY = "tts_minimax_api_key"
+    private const val KEY_TTS_MINIMAX_GROUP_ID = "tts_minimax_group_id"
     
     private var prefs: SharedPreferences? = null
     
@@ -58,14 +60,39 @@ object ConfigManager {
      * 获取TTS日日新AK
      */
     fun getTTSRirixinAk(): String {
-        return prefs?.getString(KEY_TTS_RIRIXIN_AK, "") ?: ""
+        return (prefs?.getString(KEY_TTS_RIRIXIN_AK, "") ?: "")
     }
     
     /**
      * 获取TTS日日新SK
      */
     fun getTTSRirixinSk(): String {
-        return prefs?.getString(KEY_TTS_RIRIXIN_SK, "") ?: ""
+        return (prefs?.getString(KEY_TTS_RIRIXIN_SK, "") ?: "")
+    }
+    
+    /**
+     * 设置TTS Minimax配置
+     */
+    fun setTTSMinimaxConfig(apiKey: String, groupId: String) {
+        prefs?.edit()?.apply {
+            putString(KEY_TTS_MINIMAX_API_KEY, apiKey)
+            putString(KEY_TTS_MINIMAX_GROUP_ID, groupId)
+            apply()
+        }
+    }
+    
+    /**
+     * 获取TTS Minimax API Key
+     */
+    fun getTTSMinimaxApiKey(): String {
+        return (prefs?.getString(KEY_TTS_MINIMAX_API_KEY, "") ?: "")
+    }
+    
+    /**
+     * 获取TTS Minimax Group ID
+     */
+    fun getTTSMinimaxGroupId(): String {
+        return (prefs?.getString(KEY_TTS_MINIMAX_GROUP_ID, "") ?: "")
     }
     
     /**

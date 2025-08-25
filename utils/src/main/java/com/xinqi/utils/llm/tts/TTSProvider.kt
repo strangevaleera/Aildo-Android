@@ -1,5 +1,6 @@
 package com.xinqi.utils.llm.tts
 
+import com.xinqi.utils.llm.tts.model.VoiceInfo
 import java.io.File
 
 /**
@@ -15,7 +16,8 @@ interface TTSProvider {
         voice: String,
         speed: Float,
         pitch: Float,
-        volume: Float
+        volume: Float,
+        emotion: String? = "angry"// 支持供应商；MINIMAX
     ): File?
     
     /**
@@ -50,14 +52,3 @@ interface TTSProvider {
      */
     fun getSupportedFormats(): List<String>
 }
-
-/**
- * 语音信息
- */
-data class VoiceInfo(
-    val voiceId: String,
-    val name: String,
-    val language: String,
-    val gender: String,
-    val description: String? = null
-)

@@ -6,8 +6,10 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Build
-import com.xinqi.utils.llm.tts.modal.TTSConfig
-import com.xinqi.utils.llm.tts.modal.TTSProviderType
+import com.xinqi.utils.llm.tts.model.TTSConfig
+import com.xinqi.utils.llm.tts.model.TTSProviderType
+import com.xinqi.utils.llm.tts.model.VoiceInfo
+import com.xinqi.utils.llm.tts.provider.MinimaxProvider
 import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.llm.tts.provider.RirixinTTSProvider
@@ -79,6 +81,7 @@ class TTSManager private constructor(private val context: Context) {
         currentConfig = config
         currentProvider = when (config.provider) {
             TTSProviderType.RIRIXIN -> RirixinTTSProvider(context, config)
+            TTSProviderType.MINIMAX -> MinimaxProvider(context, config)
             else -> {
                 logE("不支持的TTS提供商类型: ${config.provider}")
                 null

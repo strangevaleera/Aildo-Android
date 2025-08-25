@@ -2,7 +2,7 @@ package com.xinqi.utils.llm
 
 import android.content.Context
 import com.xinqi.utils.common.ConfigManager
-import com.xinqi.utils.llm.modal.LLMModel
+import com.xinqi.utils.llm.model.LLMModel
 
 /**
  * LLM配置类
