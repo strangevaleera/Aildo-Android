@@ -2,6 +2,7 @@ package com.xinqi.utils.llm.tts.config
 
 import com.xinqi.utils.llm.tts.model.TTSProviderType
 import com.xinqi.utils.llm.tts.model.TTSModel
+import com.xinqi.utils.log.logI
 
 /**
  * TTS模型配置
@@ -92,6 +93,7 @@ object ModelConfig {
      * 根据模型ID获取模型信息
      */
     fun getModelById(modelId: String): TTSModel? {
+        logI("获取模型，id: $modelId")
         return getAllModels().find { it.modelId == modelId }
     }
     

@@ -143,7 +143,7 @@ class AildoBluetoothManager private constructor(private val context: Context) {
                 return false
             }
             
-            //创建扫描过滤器，只扫描SVAKOM设备
+            //创建扫描过滤器，只扫描XQT1设备
             val scanFilter = ScanFilter.Builder()
                 .setManufacturerData(
                     BluetoothProtocol.CompanyId.XIN_QI,

@@ -49,6 +49,7 @@ object TTSFactory {
      */
     fun createMinimaxConfig(
         context: Context,
+        modelId: String,
         baseUrl: String = "https://api.minimax.chat/v1"
     ): TTSConfig {
         // 确保ConfigManager已初始化
@@ -58,7 +59,7 @@ object TTSFactory {
         val finalGroupId = ConfigManager.getTTSMinimaxGroupId()
         
         // 从配置文件获取Minimax模型
-        val minimaxModel = ModelConfig.getModelById(ModelConfig.MODEL_ID_MINIMAX_SPEECH)
+        val minimaxModel = ModelConfig.getModelById(modelId)
             ?: throw IllegalStateException("Minimax模型配置不存在")
         
         return TTSConfig(
@@ -84,6 +85,7 @@ object TTSFactory {
      */
     fun createRirixinConfig(
         context: Context,
+        modelId: String? = ModelConfig.MODEL_ID_RIRIXIN_NOVA,
         ak: String? = null,
         sk: String? = null,
         baseUrl: String = "https://api.sensenova.cn/v1/audio/speech"
@@ -95,7 +97,7 @@ object TTSFactory {
         val finalSk = sk ?: ConfigManager.getTTSRirixinSk()
         
         // 从配置文件获取日日新模型
-        val ririxinModel = ModelConfig.getModelById(ModelConfig.MODEL_ID_RIRIXIN_NOVA)
+        val ririxinModel = ModelConfig.getModelById(modelId?: ModelConfig.MODEL_ID_RIRIXIN_NOVA)
             ?: throw IllegalStateException("日日新模型配置不存在")
         
         return TTSConfig(
@@ -184,8 +186,8 @@ object TTSFactory {
      */
     fun getTTSConfigByModel(context: Context, ttsModel: TTSModel): TTSConfig {
         return when (ttsModel.provider) {
-            TTSProviderType.RIRIXIN -> createRirixinConfig(context)
-            TTSProviderType.MINIMAX -> createMinimaxConfig(context)
+            TTSProviderType.RIRIXIN -> createRirixinConfig(context, ttsModel.modelId)
+            TTSProviderType.MINIMAX -> createMinimaxConfig(context, ttsModel.modelId)
             TTSProviderType.AZURE -> {
                 // 这里需要传入实际的API Key和region
                 createAzureConfig("your_azure_api_key", "eastasia")
