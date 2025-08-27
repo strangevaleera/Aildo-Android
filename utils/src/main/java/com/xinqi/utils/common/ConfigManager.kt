@@ -18,18 +18,15 @@ object ConfigManager {
     private const val KEY_TTS_MINIMAX_GROUP_ID = "tts_minimax_group_id"
     
     private var prefs: SharedPreferences? = null
-    
-    /**
-     * 初始化配置管理器
-     */
+
     fun init(context: Context) {
         if (prefs == null) {
             prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         }
     }
-    
+
     /**
-     * 设置LLM豆包配置
+     * 豆包火山
      */
     fun setLLMDoubaoConfig(apiKey: String) {
         prefs?.edit()?.apply {
@@ -37,16 +34,13 @@ object ConfigManager {
             apply()
         }
     }
-    
-    /**
-     * 获取LLM豆包API Key
-     */
+
     fun getLLMDoubaoApiKey(): String {
         return (prefs?.getString(KEY_LLM_DOUBAO_API_KEY, "") ?: "")
     }
     
     /**
-     * 设置TTS日日新配置
+     * TTS日日新
      */
     fun setTTSRirixinConfig(ak: String, sk: String) {
         prefs?.edit()?.apply {
@@ -55,23 +49,17 @@ object ConfigManager {
             apply()
         }
     }
-    
-    /**
-     * 获取TTS日日新AK
-     */
+
     fun getTTSRirixinAk(): String {
         return (prefs?.getString(KEY_TTS_RIRIXIN_AK, "") ?: "")
     }
-    
-    /**
-     * 获取TTS日日新SK
-     */
+
     fun getTTSRirixinSk(): String {
         return (prefs?.getString(KEY_TTS_RIRIXIN_SK, "") ?: "")
     }
     
     /**
-     * 设置TTS Minimax配置
+     * TTS Minimax
      */
     fun setTTSMinimaxConfig(apiKey: String, groupId: String) {
         prefs?.edit()?.apply {
@@ -80,24 +68,15 @@ object ConfigManager {
             apply()
         }
     }
-    
-    /**
-     * 获取TTS Minimax API Key
-     */
+
     fun getTTSMinimaxApiKey(): String {
         return (prefs?.getString(KEY_TTS_MINIMAX_API_KEY, "") ?: "")
     }
-    
-    /**
-     * 获取TTS Minimax Group ID
-     */
+
     fun getTTSMinimaxGroupId(): String {
         return (prefs?.getString(KEY_TTS_MINIMAX_GROUP_ID, "") ?: "")
     }
-    
-    /**
-     * 清除所有配置
-     */
+
     fun clearAllConfigs() {
         prefs?.edit()?.clear()?.apply()
     }

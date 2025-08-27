@@ -5,7 +5,7 @@ import com.xinqi.utils.llm.tts.model.VoiceInfo
 
 /**
  * TTS音色配置
- * 集中管理所有TTS模型的音色信息，避免重复定义
+ * 集中管理所有TTS模型的音色信息
  */
 object VoiceConfig {
     
@@ -23,7 +23,10 @@ object VoiceConfig {
         ),
         ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA to listOf(
             VoiceInfo("guy_nangong", "挚爱男攻", "zh-CN", "male", "挚爱男攻", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
-            VoiceInfo("fusion-voice-2", "融合音色2", "zh-CN", "male", "融合音色，自然流畅", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA)
+            VoiceInfo("man_weiyan", "威严霸总", "zh-CN", "male", "威严霸总", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
+            VoiceInfo("guy_qingshuang", "清爽帅哥", "zh-CN", "male", "清爽帅哥", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
+            VoiceInfo("male_shenqing", "深情男友", "zh-CN", "male", "深情男友", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
+            VoiceInfo("man_qiangyu", "强欲霸总", "zh-CN", "male", "强欲霸总", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
         )
     )
     

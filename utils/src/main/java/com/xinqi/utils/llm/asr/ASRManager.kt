@@ -44,10 +44,7 @@ class ASRManager private constructor(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     
     private val eventListeners = mutableListOf<ASREventListener>()
-    
-    /**
-     * ASR事件监听器接口
-     */
+
     interface ASREventListener {
         fun onRecordingStarted()
         fun onRecordingStopped()
@@ -113,32 +110,22 @@ class ASRManager private constructor(private val context: Context) {
             return false
         }
     }
-    
-    /**
-     * 停止录音
-     */
+
     fun stopRecording() {
         if (!isRecording) return
-        
         try {
             isRecording = false
             recordingJob?.cancel()
-            
             audioRecord?.stop()
             audioRecord?.release()
             audioRecord = null
-            
             notifyRecordingStopped()
             logI("停止录音")
-            
         } catch (e: Exception) {
             logE("停止录音失败: ${e.message}")
         }
     }
-    
-    /**
-     * 保存音频数据到文件
-     */
+
     fun saveAudioToFile(audioData: ByteArray, fileName: String): File? {
         return try {
             val file = File(context.cacheDir, fileName)
@@ -152,15 +139,10 @@ class ASRManager private constructor(private val context: Context) {
             null
         }
     }
-    
-    /**
-     * 从音频文件识别语音
-     */
+
     fun recognizeFromFile(audioFile: File, callback: (String, Float) -> Unit) {
         scope.launch {
             try {
-                // 这里可以集成具体的语音识别服务
-                // 例如：百度语音、讯飞语音、阿里云语音等
                 val result = performRecognition(audioFile)
                 mainHandler.post {
                     callback(result.first, result.second)
@@ -173,52 +155,26 @@ class ASRManager private constructor(private val context: Context) {
             }
         }
     }
-    
-    /**
-     * 执行语音识别
-     * 这里需要集成具体的语音识别服务
-     */
+
     private suspend fun performRecognition(audioFile: File): Pair<String, Float> {
         // TODO: 集成具体的语音识别服务
-        // 例如：
-        // - 百度语音识别
-        // - 讯飞语音识别
-        // - 阿里云语音识别
-        // - 腾讯云语音识别
-        
-        // 模拟识别结果
-        // delay(1000) // This line was commented out in the original file, so it's commented out here.
-        return Pair("这是模拟的语音识别结果", 0.85f)
+        return Pair("", 0.85f)
     }
-    
-    /**
-     * 实时语音识别
-     */
+
     fun startRealTimeRecognition() {
-        // TODO: 实现实时语音识别
-        // 可以集成WebSocket或其他实时通信方式
+        // TODO: 可以集成WebSocket或其他实时通信方式
         logI("开始实时语音识别")
     }
-    
-    /**
-     * 停止实时语音识别
-     */
+
     fun stopRealTimeRecognition() {
-        // TODO: 停止实时语音识别
         logI("停止实时语音识别")
     }
-    
-    /**
-     * 检查录音权限
-     */
+
     fun checkRecordingPermission(): Boolean {
         // TODO: 检查录音权限
         return true
     }
-    
-    /**
-     * 获取录音状态
-     */
+
     fun isRecording(): Boolean = isRecording
     
     // 通知方法

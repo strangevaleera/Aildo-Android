@@ -85,11 +85,10 @@ fun CharacterInteractionScreen(
             onContinuousClick = { count, bodyPart, x, y ->
                 viewModel.onContinuousClick(context, currentCharacter, count, bodyPart, x, y)
             },
-            // 根据动画类型设置播放模式
             playMode = when (currentAnimation) {
-                "angry" -> com.xinqi.ui.components.PlayMode.ONCE  // 生气动画只播放一次
-                "shy" -> com.xinqi.ui.components.PlayMode.ONCE   // 害羞动画只播放一次
-                else -> com.xinqi.ui.components.PlayMode.LOOP    // 其他动画循环播放
+                "angry" -> com.xinqi.ui.components.PlayMode.ONCE
+                "shy" -> com.xinqi.ui.components.PlayMode.ONCE
+                else -> com.xinqi.ui.components.PlayMode.LOOP
             },
             onVideoReady = {
                 logI("视频准备就绪")
@@ -117,7 +116,7 @@ fun CharacterInteractionScreen(
             onAnimationSelect = { animationType ->
                 viewModel.playAnimation(animationType)
             },
-            onToggleVisibility = { /* 状态管理 */ },
+            onToggleVisibility = {  },
             modifier = Modifier
                 .align(Alignment.CenterEnd)
         )
@@ -130,14 +129,14 @@ fun CharacterInteractionScreen(
                 .align(Alignment.TopEnd)
         )
 
-        // 大模型对话测试按钮（右下角）
+/*        // 大模型对话测试按钮（右下角）
         LLMTrigger(modifier = Modifier
             .padding(16.dp)
             .align(Alignment.BottomEnd)
         ) {
             //LLMIntegrator.testQuery(context, "")
             //LLMIntegrator.testQueryStream(context, "")
-        }
+        }*/
 
         // 模型设置按钮（左边）
         ModelSettingsButton(modifier = Modifier
@@ -158,7 +157,7 @@ fun CharacterInteractionScreen(
 }
 
 /**
- * 蓝牙状态指示器
+ * 蓝牙状态指示
  */
 @Composable
 private fun BluetoothStatusIndicator(
@@ -217,7 +216,7 @@ private fun CharacterSelectionButton(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 人物列表 - 使用CharacterModel配置
+                // 人物列表
                 CharacterModel.CHARACTERS.forEach { character ->
                     CharacterOption(
                         name = character.displayName,
@@ -229,7 +228,6 @@ private fun CharacterSelectionButton(
             }
         }
     } else {
-        // 隐藏状态下的触发按钮
         FloatingActionButton(
             onClick = onToggle,
             modifier = Modifier.wrapContentSize(),
@@ -405,9 +403,8 @@ private fun ChatInterface(
                     onClick = {
                         if (userInput.isNotEmpty() && !isLoading) {
                             isLoading = true
-                            aiResponse = "" // 清空之前的回复
+                            aiResponse = ""
 
-                            // 调用LLMIntegrator.query方法
                             LLMIntegrator.query(
                                 context = context,
                                 query = userInput,

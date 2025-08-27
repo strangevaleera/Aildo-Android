@@ -22,18 +22,13 @@ class VideoTransitionManager(
     private var currentPlayer: ExoPlayer? = null
     // 预加载播放器池
     private val preloadPool = mutableMapOf<String, ExoPlayer>()
-    // 过渡状态
     private var isTransitioning = false
     private val preloadScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    
-    /**
-     * 初始化主播放器
-     */
+
     fun initializeMainPlayer(): ExoPlayer {
         return ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
             volume = 1.0f
-            // 设置缓冲参数，减少黑屏
             setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
         }.also { currentPlayer = it }
     }
@@ -53,7 +48,6 @@ class VideoTransitionManager(
                                 val player = ExoPlayer.Builder(context).build().apply {
                                     playWhenReady = false
                                     volume = 0f
-                                    // 设置预加载参数
                                     setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
                                 }
 
@@ -81,7 +75,6 @@ class VideoTransitionManager(
                                 val player = ExoPlayer.Builder(context).build().apply {
                                     playWhenReady = false
                                     volume = 0f
-                                    // 设置预加载参数
                                     setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
                                 }
 
@@ -103,9 +96,9 @@ class VideoTransitionManager(
 
         }
     }
-    
+
     /**
-     * 执行优化的视频切换
+     * 动画视频切换
      */
     fun switchVideo(
         character: String,
@@ -115,7 +108,7 @@ class VideoTransitionManager(
         onTransitionComplete: () -> Unit = {}
     ) {
         if (isTransitioning) {
-            logI("VideoTransitionManager", "正在切换中，忽略切换请求")
+            logI("VideoTransitionManager", "isTransitioning")
             return
         }
         
@@ -124,53 +117,40 @@ class VideoTransitionManager(
         onTransitionStart()
         
         try {
-            // 检查是否有预加载的视频
             val preloadKey = "${character}_${animation}"
             val preloadedPlayer = preloadPool[preloadKey]
             
             if (preloadedPlayer != null && preloadedPlayer.playbackState == Player.STATE_READY) {
-                // 使用预加载的视频进行无缝切换
                 performSeamlessSwitch(currentPlayer, preloadedPlayer, playMode)
             } else {
-                // 传统切换方式，优化了过渡效果
                 performOptimizedSwitch(currentPlayer, character, animation, playMode)
             }
-            
             logI("VideoTransitionManager", "视频切换完成: $preloadKey")
         } catch (e: Exception) {
             logI("VideoTransitionManager", "视频切换失败: ${e.message}")
-            // 回退到传统方式
             performOptimizedSwitch(currentPlayer, character, animation, playMode)
         } finally {
             isTransitioning = false
             onTransitionComplete()
         }
     }
-    
-    /**
-     * 执行无缝视频切换
-     */
+
     private fun performSeamlessSwitch(
         currentPlayer: ExoPlayer,
         preloadedPlayer: ExoPlayer,
         playMode: PlayMode
     ) {
-        // 设置预加载播放器的播放模式
         preloadedPlayer.repeatMode = when (playMode) {
             PlayMode.ONCE -> Player.REPEAT_MODE_OFF
             PlayMode.LOOP -> Player.REPEAT_MODE_ALL
         }
-        // 将预加载的播放器设置为当前播放器
         preloadedPlayer.playWhenReady = true
         preloadedPlayer.volume = 1.0f
-        // 更新当前播放器引用
         this.currentPlayer = preloadedPlayer
-        // 释放旧的播放器
         currentPlayer.release()
         // 从预加载池中移除已使用的播放器
         val keyToRemove = preloadPool.entries.find { it.value == preloadedPlayer }?.key
         keyToRemove?.let { preloadPool.remove(it) }
-        // 重新预加载该视频
         keyToRemove?.let { key ->
             val parts = key.split("_")
             if (parts.size == 2) {
@@ -178,19 +158,14 @@ class VideoTransitionManager(
             }
         }
     }
-    
-    /**
-     * 执行优化的视频切换
-     */
+
     private fun performOptimizedSwitch(
         player: ExoPlayer,
         character: String,
         animation: String,
         playMode: PlayMode
     ) {
-        // 先暂停当前播放
         player.pause()
-        // 设置新的媒体项
         val videoUri = getCharacterVideoUri(context, character, animation)
         val mediaItem = MediaItem.fromUri(videoUri)
         player.repeatMode = when (playMode) {
@@ -199,50 +174,33 @@ class VideoTransitionManager(
         }
         player.setMediaItem(mediaItem)
         player.prepare()
-        // 延迟恢复播放，确保视频已准备好
         player.playWhenReady = true
     }
-    
-    /**
-     * 获取当前播放器
-     */
+
     fun getCurrentPlayer(): ExoPlayer? = currentPlayer
-    
-    /**
-     * 检查是否正在切换
-     */
+
     fun isTransitioning(): Boolean = isTransitioning
-    
-    /**
-     * 释放资源
-     */
+
     fun release() {
         preloadScope.cancel()
         currentPlayer?.release()
         preloadPool.values.forEach { it.release() }
         preloadPool.clear()
     }
-    
-    /**
-     * 根据角色和动画类型获取视频资源URI
-     */
+
     private fun getCharacterVideoUri(
         context: Context, 
         character: String, 
         animationType: String
     ): String {
         val baseUri = "android.resource://${context.packageName}/raw"
-        
-        // 从CharacterModel获取角色配置
-        val characterConfig = com.xinqi.ui.character.CharacterModel.getCharacter(character)
+        val characterConfig = CharacterModel.getCharacter(character)
         val animationConfig = characterConfig?.animations?.find { it.type == animationType }
         
         return if (animationConfig != null) {
-            // 从动画配置中获取视频资源ID
             val resourceName = context.resources.getResourceEntryName(animationConfig.videoRes)
             "$baseUri/$resourceName"
         } else {
-            // 回退到默认配置
             "$baseUri/fig1_chat"
         }
     }

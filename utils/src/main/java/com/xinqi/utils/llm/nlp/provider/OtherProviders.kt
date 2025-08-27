@@ -7,8 +7,10 @@ import com.xinqi.utils.llm.nlp.LLMProvider
 import com.xinqi.utils.log.logI
 
 /**
- * Claude模型提供者
+ * 其他未接入模型
  */
+
+
 class ClaudeProvider(private val config: LLMConfig) : LLMProvider {
     override suspend fun chat(messages: List<Message>, promptTemplate: PromptTemplate?): String {
         logI("Claude模型暂未实现，返回模拟响应")

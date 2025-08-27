@@ -23,8 +23,6 @@ class CharacterInteractionViewModel : ViewModel() {
     // 当前播放的动画类型
     private val _currentAnimation = MutableStateFlow("chat")
     val currentAnimation: StateFlow<String> = _currentAnimation.asStateFlow()
-
-    // 是否显示人物选择器
     private val _showCharacterSelector = MutableStateFlow(false)
     val showCharacterSelector: StateFlow<Boolean> = _showCharacterSelector.asStateFlow()
 
@@ -40,22 +38,16 @@ class CharacterInteractionViewModel : ViewModel() {
         // 这里可以添加角色切换的逻辑
     }
 
-    /**
-     * 切换人物选择器显示状态
-     */
     fun toggleCharacterSelector() {
         _showCharacterSelector.value = !_showCharacterSelector.value
     }
 
-    /**
-     * 隐藏人物选择器
-     */
     fun hideCharacterSelector() {
         _showCharacterSelector.value = false
     }
 
     /**
-     * 播放指定动画
+     * 播放指定的动画效果
      */
     fun playAnimation(animationType: String) {
         logI("play animation: $animationType")
@@ -69,21 +61,17 @@ class CharacterInteractionViewModel : ViewModel() {
                         character: String,
                         bodyPart: String, x: Float, y: Float) {
         viewModelScope.launch {
-            // 使用新的方法获取动画触发器
             val animationTrigger = CharacterModel.getAnimationTrigger(character, bodyPart, CharacterModel.ClickType.SINGLE_CLICK)
             
             if (animationTrigger != null) {
                 // 播放对应动画
                 playAnimation(animationTrigger)
-                
                 // 获取点击动作配置
                 val clickAction = CharacterModel.getClickAction(character, bodyPart, CharacterModel.ClickType.SINGLE_CLICK)
-                
-                // 显示角色回复
+                // 显示角色回复，目前为toast
                 clickAction?.response?.let { response ->
                     showResult(context, response)
                 }
-                
                 // 发送蓝牙指令
                 clickAction?.bluetoothCommand?.let { command ->
                     sendBluetoothCommand(context, command)
@@ -98,16 +86,12 @@ class CharacterInteractionViewModel : ViewModel() {
                             character: String,
                             bodyPart: String, x: Float, y: Float) {
         viewModelScope.launch {
-            // 使用新的方法获取动画触发器
             val animationTrigger = CharacterModel.getAnimationTrigger(character, bodyPart, CharacterModel.ClickType.LONG_PRESS)
             
             if (animationTrigger != null) {
-                // 播放对应动画
                 playAnimation(animationTrigger)
-                
                 // 获取点击动作配置
                 val clickAction = CharacterModel.getClickAction(character, bodyPart, CharacterModel.ClickType.LONG_PRESS)
-                
                 // 显示角色回复
                 clickAction?.response?.let { response ->
                     showResult(context, response)
@@ -124,13 +108,8 @@ class CharacterInteractionViewModel : ViewModel() {
                 val animationTrigger = CharacterModel.getAnimationTrigger(character, bodyPart, CharacterModel.ClickType.RAPID_CLICK)
                 
                 if (animationTrigger != null) {
-                    // 播放对应动画
                     playAnimation(animationTrigger)
-                    
-                    // 获取点击动作配置
                     val clickAction = CharacterModel.getClickAction(character, bodyPart, CharacterModel.ClickType.RAPID_CLICK)
-                    
-                    // 显示角色回复
                     clickAction?.response?.let { response ->
                         showResult(context, response)
                     }
@@ -151,17 +130,10 @@ class CharacterInteractionViewModel : ViewModel() {
     }
 
 
-
-    /**
-     * 设置蓝牙连接状态
-     */
     fun setBluetoothConnected(connected: Boolean) {
         _bluetoothConnected.value = connected
     }
 
-    /**
-     * 发送自定义控制指令
-     */
     fun sendCustomCommand(command: String) {
         viewModelScope.launch {
             // 这里调用蓝牙管理器发送自定义指令

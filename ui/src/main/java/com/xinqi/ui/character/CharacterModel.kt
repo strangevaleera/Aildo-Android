@@ -72,7 +72,7 @@ object CharacterModel {
     )
 
     /**
-     * 点击类型枚举
+     * 点击类型
      */
     enum class ClickType {
         SINGLE_CLICK,      // 单击
@@ -82,7 +82,7 @@ object CharacterModel {
     }
 
     /**
-     * 预定义的角色配置
+     * 预定义角色配置
      */
     val CHARACTERS = listOf(
         Character(
@@ -242,44 +242,26 @@ object CharacterModel {
         )
     )
 
-    /**
-     * 根据角色ID获取角色配置
-     */
     fun getCharacter(id: String): Character? {
         return CHARACTERS.find { it.id == id }
     }
 
-    /**
-     * 根据角色ID获取动画配置
-     */
     fun getCharacterAnimations(characterId: String): List<AnimationConfig> {
         return getCharacter(characterId)?.animations ?: emptyList()
     }
 
-    /**
-     * 根据角色ID和动画类型获取动画配置
-     */
     fun getAnimationConfig(characterId: String, animationType: String): AnimationConfig? {
         return getCharacter(characterId)?.animations?.find { it.type == animationType }
     }
 
-    /**
-     * 根据角色ID和身体部位获取点击动作配置
-     */
     fun getClickActions(characterId: String, bodyPart: String): List<ClickAction> {
         return getCharacter(characterId)?.clickActions?.filter { it.bodyPart == bodyPart } ?: emptyList()
     }
 
-    /**
-     * 根据角色ID获取身体部位配置
-     */
     fun getBodyParts(characterId: String): List<BodyPart> {
         return getCharacter(characterId)?.bodyParts ?: emptyList()
     }
 
-    /**
-     * 检测点击的身体部位
-     */
     fun detectBodyPart(characterId: String, x: Float, y: Float): BodyPart? {
         val bodyParts = getBodyParts(characterId)
         return bodyParts.find { bodyPart ->
@@ -292,9 +274,6 @@ object CharacterModel {
         }
     }
 
-    /**
-     * 获取点击区域的响应信息
-     */
     fun getClickAreaResponse(characterId: String, bodyPartId: String, x: Float, y: Float): ClickArea? {
         val bodyPart = getBodyParts(characterId).find { it.id == bodyPartId }
         return bodyPart?.clickAreas?.find { area ->
@@ -310,16 +289,13 @@ object CharacterModel {
      * @param characterId 角色ID
      * @param bodyPartId 身体部位ID
      * @param clickType 点击类型
-     * @return 动画触发器名称，如果没有找到则返回null
+     * @return 动画名称，如果没有找到则返回null
      */
     fun getAnimationTrigger(characterId: String, bodyPartId: String, clickType: ClickType): String? {
         val character = getCharacter(characterId) ?: return null
-        
-        // 从clickActions中查找匹配的配置
         val clickAction = character.clickActions.find { action ->
             action.bodyPart == bodyPartId && action.clickType == clickType
         }
-        
         return clickAction?.animationTrigger
     }
 
