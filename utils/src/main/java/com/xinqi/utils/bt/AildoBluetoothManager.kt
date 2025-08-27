@@ -143,18 +143,19 @@ class AildoBluetoothManager private constructor(private val context: Context) {
                 return false
             }
             
-            //创建扫描过滤器，只扫描XQT1设备
+            // 创建扫描过滤器，只扫描XQT1设备
+            // 只检查Company ID，不检查具体数据
             val scanFilter = ScanFilter.Builder()
                 .setManufacturerData(
-                    BluetoothProtocol.CompanyId.XIN_QI,
-                    byteArrayOf(0x58, 0x51, 0x54, 0x31), // "XQT1"
-                    (0..3).map { it.toByte() }.toByteArray()
+                    0x0045,  // 使用实际的 Company ID (0x0045)
+                    null     // 不指定具体数据，只匹配Company ID
                 )
                 .build()
             
             val scanSettings = ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setReportDelay(0)
+                .setNumOfMatches(ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT)
                 .build()
             
             scanCallback = object : ScanCallback() {
@@ -173,7 +174,22 @@ class AildoBluetoothManager private constructor(private val context: Context) {
                 }
             }
             
-            bluetoothLeScanner?.startScan(listOf(scanFilter), scanSettings, scanCallback)
+            try {
+                bluetoothLeScanner?.startScan(listOf(scanFilter), scanSettings, scanCallback)
+                logI("使用过滤器扫描启动成功")
+            } catch (e: Exception) {
+                logE("过滤器扫描失败，尝试无过滤器扫描: ${e.message}")
+                // 如果过滤器扫描失败，尝试无过滤器扫描
+                try {
+                    bluetoothLeScanner?.startScan(null, scanSettings, scanCallback)
+                    logI("无过滤器扫描启动成功")
+                } catch (e2: Exception) {
+                    logE("无过滤器扫描也失败: ${e2.message}")
+                    notifyError("扫描启动失败: ${e2.message}")
+                    return false
+                }
+            }
+            
             isScanning = true
             discoveredDevices.clear()
             
@@ -239,13 +255,53 @@ class AildoBluetoothManager private constructor(private val context: Context) {
             return // 设备已发现
         }
         
-        discoveredDevices[deviceAddress] = device
+        // 记录详细的扫描信息
+        val deviceName = device.name ?: "未知"
+        val rssi = result.rssi
+        val scanRecord = result.scanRecord
         
-        // 解析广播数据
-        val broadcastData = parseManufacturerData(result.scanRecord?.manufacturerSpecificData as Map<Int, ByteArray>?)
+        logI("发现设备: $deviceName (${deviceAddress}), RSSI: ${rssi}dBm")
         
-        logI("发现设备: ${device.name ?: "未知"} (${deviceAddress})")
-        notifyDeviceDiscovered(device, broadcastData)
+        // 检查是否是目标设备
+        val isTargetDevice = isTargetDevice(device, scanRecord)
+        
+        if (isTargetDevice) {
+            logI("发现目标XQT1设备: $deviceName")
+            discoveredDevices[deviceAddress] = device
+            
+            // 解析广播数据
+            val broadcastData = parseManufacturerData(scanRecord?.manufacturerSpecificData as Map<Int, ByteArray>?)
+            
+            notifyDeviceDiscovered(device, broadcastData)
+        } else {
+            logI("发现非目标设备: $deviceName")
+        }
+    }
+    
+    /**
+     * 判断是否是目标设备
+     */
+    private fun isTargetDevice(device: BluetoothDevice, scanRecord: android.bluetooth.le.ScanRecord?): Boolean {
+        // 检查设备名称
+        val deviceName = device.name
+        if (deviceName != null && (deviceName.contains("XQT") || deviceName.contains("XQT_1"))) {
+            return true
+        }
+        
+        // 检查厂商数据
+        val manufacturerData = scanRecord?.manufacturerSpecificData
+        if (manufacturerData != null) {
+            val data = manufacturerData[0x0045] // Company ID 0x0045
+            if (data != null && data.size >= 4) {
+                // 检查前4字节是否是 "XQT1"
+                if (data[0] == 0x58.toByte() && data[1] == 0x51.toByte() && 
+                    data[2] == 0x54.toByte() && data[3] == 0x31.toByte()) {
+                    return true
+                }
+            }
+        }
+        
+        return false
     }
     
     /**
