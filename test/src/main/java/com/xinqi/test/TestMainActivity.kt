@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.xinqi.test.ui.BluetoothTestScreen
 import com.xinqi.test.ui.theme.BluetoothTestTheme
+import com.xinqi.utils.log.logI
 
 class TestMainActivity : ComponentActivity() {
     
@@ -25,6 +26,7 @@ class TestMainActivity : ComponentActivity() {
             it
         }
         if (allGranted) {
+            logI("所有权限已经赋予")
             // 权限已授予，可以开始蓝牙操作
         }
     }
