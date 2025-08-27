@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import com.xinqi.aiildo.ui.theme.AildoTheme
 import kotlinx.coroutines.delay
 
+/**
+ * 点击加载登陆页
+ * */
 class SplashActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -17,15 +17,9 @@ interface BluetoothCommunicationManager {
      * 当前连接的设备信息
      */
     val connectedDevice: StateFlow<BluetoothDeviceInfo?>
-    
-    /**
-     * 连接蓝牙设备
-     */
+
     suspend fun connectToDevice(deviceAddress: String): Result<Unit>
-    
-    /**
-     * 断开蓝牙连接
-     */
+
     suspend fun disconnect(): Result<Unit>
     
     /**
@@ -42,10 +36,7 @@ interface BluetoothCommunicationManager {
      * 扫描可用的蓝牙设备
      */
     suspend fun scanForDevices(): Result<List<BluetoothDeviceInfo>>
-    
-    /**
-     * 停止扫描
-     */
+
     fun stopScan()
 }
 
@@ -70,9 +61,6 @@ data class BluetoothDeviceInfo(
     val isConnected: Boolean = false
 )
 
-/**
- * 蓝牙指令类型
- */
 sealed class BluetoothCommand {
     data class BodyPartTouch(
         val part: String,
@@ -109,35 +97,20 @@ sealed class BluetoothResult<out T> {
     data class Error(val message: String, val cause: Throwable? = null) : BluetoothResult<Nothing>()
 }
 
-/**
- * 蓝牙指令构建器
- */
 object BluetoothCommandBuilder {
-    
-    /**
-     * 构建身体部位触摸指令
-     */
+
     fun buildBodyPartTouchCommand(part: String, x: Float, y: Float): BluetoothCommand {
         return BluetoothCommand.BodyPartTouch(part, x, y)
     }
-    
-    /**
-     * 构建动画控制指令
-     */
+
     fun buildAnimationControlCommand(animationType: String, character: String): BluetoothCommand {
         return BluetoothCommand.AnimationControl(animationType, character)
     }
-    
-    /**
-     * 构建振动控制指令
-     */
+
     fun buildVibrationCommand(intensity: Int, duration: Long): BluetoothCommand {
         return BluetoothCommand.VibrationControl(intensity, duration)
     }
-    
-    /**
-     * 构建加热控制指令
-     */
+
     fun buildHeatingCommand(temperature: Float, duration: Long): BluetoothCommand {
         return BluetoothCommand.HeatingControl(temperature, duration)
     }

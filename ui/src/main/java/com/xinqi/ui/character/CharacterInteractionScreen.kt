@@ -29,7 +29,7 @@ import androidx.media3.ui.PlayerView
 
 /**
  * 人物交互界面
- * 包含全屏视频播放和人物选择功能
+ * 包含全屏视频播放和人物选择
  * 备选组件
  */
 @UnstableApi
@@ -80,16 +80,12 @@ private fun CharacterVideoPlayer(
 ) {
     val context = LocalContext.current
     
-    // 创建ExoPlayer实例
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            // 设置循环播放
             repeatMode = Player.REPEAT_MODE_ALL
-            // 自动播放
             playWhenReady = true
         }
     }
-    
     // 根据角色加载对应的视频资源
     LaunchedEffect(character) {
         val videoUri = getCharacterVideoUri(context, character)
@@ -97,29 +93,23 @@ private fun CharacterVideoPlayer(
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
     }
-    
-    // 在组件销毁时释放播放器
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
         }
     }
-    
-    // 视频播放器视图
+    // 视频播放器
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exoPlayer
-                // 隐藏播放器控制UI
                 useController = false
-                // 设置视频缩放模式
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             }
         },
         modifier = modifier
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
-                    // 获取触摸坐标
                     val x = offset.x / size.width.toFloat()
                     val y = offset.y / size.height.toFloat()
                     
@@ -170,7 +160,6 @@ private fun CharacterSelectionButton(
             }
         }
     } else {
-        // 隐藏状态下的触发按钮
         FloatingActionButton(
             onClick = onToggle,
             modifier = modifier.size(56.dp),
@@ -230,7 +219,6 @@ private fun getCharacterVideoUri(context: Context, character: String): String {
     return if (animationConfig != null) {
         "android.resource://${context.packageName}/raw/${animationConfig.videoRes}"
     } else {
-        // 默认返回fig1_chat
         "android.resource://${context.packageName}/raw/fig1_chat"
     }
 }

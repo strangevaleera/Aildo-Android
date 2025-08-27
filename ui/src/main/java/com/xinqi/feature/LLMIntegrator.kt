@@ -7,6 +7,9 @@ import com.xinqi.utils.llm.model.PromptTemplate
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
 
+/**
+ * 大语言模型调用类
+ * */
 object LLMIntegrator {
 
     lateinit var mLLmManager: LLMManager
@@ -68,7 +71,6 @@ object LLMIntegrator {
             name = "私人男友-大厦比",
             description = "",
             template = TEMPLATE1,
-            //"你是一个只属于我的优质男友, 专门用于提供情绪价值的专属男友，性格有点坏，请回答：{{question}}",
             variables = listOf("question")
         )
         mLLmManager.textChat(query, customPrompt) { response ->

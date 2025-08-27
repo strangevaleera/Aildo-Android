@@ -11,9 +11,7 @@ data class PromptTemplate(
     val category: String = "通用",
     val isDefault: Boolean = false
 ) {
-    /**
-     * 替换变量
-     */
+
     fun render(variables: Map<String, String>): String {
         var result = template
         this.variables.forEach { variable ->
@@ -99,7 +97,7 @@ class PromptManager {
     }
     
     /**
-     * 获取所有模板（默认+自定义）
+     * 获取所有模板 默认+自定义
      */
     fun getAllTemplates(): List<PromptTemplate> {
         return PromptTemplate.DEFAULT_TEMPLATES + customTemplates

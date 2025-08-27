@@ -22,8 +22,6 @@ import com.xinqi.utils.log.logI
 
 /**
  * 人物视频播放器组件
- * 支持多种动画控制和事件处理
- * 优化了视频切换时的黑屏问题
  */
 @UnstableApi
 @Composable
@@ -38,25 +36,18 @@ fun CharacterVideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
     //连续点击检测
     var clickCount by remember { mutableStateOf(0) }
     var lastClickTime by remember { mutableStateOf(0L) }
     var lastClickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
     val continuousClickThreshold = 500L //连续点击时间阈值ms
     val maxClickCount = 5
-
     //视频过渡管理
     val videoTransitionManager = remember { VideoTransitionManager(context) }
-    
     val currentPlayer = remember { videoTransitionManager.initializeMainPlayer() }
-    
     var currentVideoInfo by remember { mutableStateOf<VideoInfo?>(null) }
     var isTransitioning by remember { mutableStateOf(false) }
-
-    //监听播放器状态
     var isVideoReady by remember { mutableStateOf(false) }
-    
     LaunchedEffect(currentPlayer) {
         currentPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -80,17 +71,13 @@ fun CharacterVideoPlayer(
             }
         })
     }
-    
     //预加载视频资源
     LaunchedEffect(Unit) {
         videoTransitionManager.preloadVideos()
     }
-    
     // 根据角色和动画类型加载对应的视频资源
     LaunchedEffect(character, animationType) {
         val newVideoInfo = VideoInfo(character, animationType)
-        
-        //如果视频没有变化，不需要重新加载
         if (currentVideoInfo != newVideoInfo) {
             videoTransitionManager.switchVideo(
                 character = character,
@@ -111,7 +98,6 @@ fun CharacterVideoPlayer(
         if (clickCount > 0) {
             delay(continuousClickThreshold)
             if (clickCount > 0) {
-                //如果超过阈值后仍有点击计数，说明是连续点击
                 if (clickCount >= 2) {
                     val (x, y) = lastClickPosition
                     val bodyPart = detectBodyPart(x, y)
@@ -122,14 +108,12 @@ fun CharacterVideoPlayer(
         }
     }
 
-    //组件销毁时释放播放器
     DisposableEffect(Unit) {
         onDispose {
             videoTransitionManager.release()
         }
     }
     
-    //视频播放器视图
     Box(modifier = modifier) {
         //主播放器
         AndroidView(
@@ -138,12 +122,9 @@ fun CharacterVideoPlayer(
                     player = currentPlayer
                     useController = false
                     resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    // 设置透明背景，减少黑屏效果
                     setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                    // 启用硬件加速
                     setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                     keepScreenOn = true
-                    //缓冲参数
                     setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                 }
             },
@@ -157,7 +138,6 @@ fun CharacterVideoPlayer(
                                 val x = offset.x / size.width.toFloat()
                                 val y = offset.y / size.height.toFloat()
 
-                                //检测长按的身体部位
                                 val bodyPart = detectBodyPart(x, y)
                                 onLongPress?.invoke(bodyPart, x, y)
                         },
@@ -169,7 +149,7 @@ fun CharacterVideoPlayer(
                                 val x = offset.x / size.width.toFloat()
                                 val y = offset.y / size.height.toFloat()
                                 
-                                // 检查是否为连续点击（位置相近且时间间隔短）
+                                // 位置相近且时间间隔短：连续点击事件
                                 if (currentTime - lastClickTime < continuousClickThreshold && 
                                     isPositionClose(x, y, lastClickPosition.first, lastClickPosition.second)) {
                                     clickCount++
@@ -177,7 +157,6 @@ fun CharacterVideoPlayer(
                                         clickCount = maxClickCount
                                     }
                                 } else {
-                                    // 重置点击计数
                                     clickCount = 1
                                 }
                                 
@@ -192,7 +171,7 @@ fun CharacterVideoPlayer(
                 }
         )
         
-        //过渡遮罩层，减少黑屏视觉冲击
+        //过渡遮罩层 减少黑屏问题
         AnimatedVisibility(
             visible = isTransitioning,
             enter = fadeIn(animationSpec = tween(150)),
@@ -212,22 +191,18 @@ fun CharacterVideoPlayer(
             )
         }
         
-        //加载指示器
         if (isTransitioning) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.1f))
             ) {
-                //可以在这里添加加载动画
+                //加载动画
             }
         }
     }
 }
 
-/**
- * 执行无缝视频切换
- */
 private fun performSeamlessSwitch(
     currentPlayer: ExoPlayer,
     preloadedPlayer: ExoPlayer
@@ -238,14 +213,8 @@ private fun performSeamlessSwitch(
     
     //释放旧的播放器
     currentPlayer.release()
-    
-    // 注意：需要重新创建播放器实例，因为ExoPlayer不支持直接替换
-    // 可能需要重新创建PlayerView
 }
 
-/**
- * 执行优化的视频切换
- */
 private fun performOptimizedSwitch(
     context: Context,
     player: ExoPlayer,
@@ -253,36 +222,24 @@ private fun performOptimizedSwitch(
     animationType: String,
     playMode: PlayMode
 ) {
-    // 先暂停当前播放
     player.pause()
-
-    // 设置新的媒体项
     val videoUri = getCharacterVideoUri(context, character, animationType)
     val mediaItem = MediaItem.fromUri(videoUri)
-    
     player.repeatMode = when (playMode) {
         PlayMode.ONCE -> Player.REPEAT_MODE_OFF
         PlayMode.LOOP -> Player.REPEAT_MODE_ALL
     }
-
     player.setMediaItem(mediaItem)
     player.prepare()
-    
-    // 延迟恢复播放，确保视频已准备好
     player.playWhenReady = true
 }
 
-/**
- * 播放模式枚举
- */
+
 enum class PlayMode {
-    LOOP,   // 循环播放
-    ONCE    // 只播放一次
+    LOOP,
+    ONCE
 }
 
-/**
- * 视频信息数据类
- */
 data class VideoInfo(
     val character: String,
     val animationType: String
@@ -353,7 +310,6 @@ private fun getCharacterVideoUri(
         val resourceName = context.resources.getResourceEntryName(animationConfig.videoRes)
         "$baseUri/$resourceName"
     } else {
-        // 回退到默认配置
         "$baseUri/fig1_chat"
     }
 }
