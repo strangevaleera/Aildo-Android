@@ -22,7 +22,7 @@ object VoiceConfig {
             VoiceInfo("seriousvoice-general-female-cn", "严肃女声", "zh-CN", "female", "严肃的女声，适合正式场景",  ModelConfig.MODEL_ID_RIRIXIN_NOVA)
         ),
         ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA to listOf(
-            VoiceInfo("fusion-voice-1", "融合音色1", "zh-CN", "female", "融合音色，自然流畅", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
+            VoiceInfo("guy_nangong", "挚爱男攻", "zh-CN", "male", "挚爱男攻", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA),
             VoiceInfo("fusion-voice-2", "融合音色2", "zh-CN", "male", "融合音色，自然流畅", ModelConfig.MODEL_ID_RIRIXIN_SENSE_NOVA)
         )
     )
