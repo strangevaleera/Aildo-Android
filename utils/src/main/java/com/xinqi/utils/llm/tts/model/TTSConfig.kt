@@ -17,8 +17,14 @@ data class TTSConfig(
     val defaultPitch: Float = 1.0f,
     val defaultVolume: Float = 1.0f,
     val outputFormat: String = "wav",
-    val sampleRate: Int = 16000
+    val sampleRate: Int = SAMPLE_RATE
 )
+
+/**
+ * 全局统一的参数
+ * */
+const val SAMPLE_RATE = 32000 //tts采样率
+
 
 /**
  * TTS提供商类型

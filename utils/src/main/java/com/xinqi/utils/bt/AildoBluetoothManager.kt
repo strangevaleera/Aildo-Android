@@ -518,10 +518,12 @@ class AildoBluetoothManager private constructor(private val context: Context) {
         
         try {
             val data = packet.toByteArray()
+            //val data = byteArrayOf(0x5A, 0x03, 0x00, 0x00, 0x01, 0x62, 0x00)
             writeCharacteristic?.value = data
             val success = currentGatt?.writeCharacteristic(writeCharacteristic) == true
             if (success) {
-                logI("发送数据: ${data.joinToString(", ") { "0x${it.toString(16).uppercase()}" }}")
+                //logI("发送数据: ${data.joinToString(", ") { "0x${it.toString(16).uppercase()}" }}")
+                logI("发送数据: ${data.joinToString(", ") { "0x${String.format("%02X", it)}" }}")
                 // 设置写入超时
                 scope.launch {
                     delay(WRITE_TIMEOUT)

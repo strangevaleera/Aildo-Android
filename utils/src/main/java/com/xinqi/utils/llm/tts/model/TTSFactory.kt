@@ -88,7 +88,7 @@ object TTSFactory {
         modelId: String? = ModelConfig.MODEL_ID_RIRIXIN_NOVA,
         ak: String? = null,
         sk: String? = null,
-        baseUrl: String = "https://api.sensenova.cn/v1/audio/speech"
+        baseUrl: String = RirixinTTSProvider.getBaseUrl(modelId)
     ): TTSConfig {
         // 确保ConfigManager已初始化
         ConfigManager.init(context)

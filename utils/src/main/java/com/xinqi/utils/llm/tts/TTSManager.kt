@@ -6,6 +6,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Build
+import com.xinqi.utils.llm.tts.model.SAMPLE_RATE
 import com.xinqi.utils.llm.tts.model.TTSConfig
 import com.xinqi.utils.llm.tts.model.TTSProviderType
 import com.xinqi.utils.llm.tts.model.VoiceInfo
@@ -29,11 +30,13 @@ class TTSManager private constructor(private val context: Context) {
     
     companion object {
         private const val TAG = "TTSManager"
-        private const val SAMPLE_RATE = 32000
-        private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_MONO
+        private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_STEREO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
         private var BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
-        
+
+        private var mChannel: Int = CHANNEL_CONFIG
+        private var audioFormat: Int = AUDIO_FORMAT
+
         @Volatile
         private var INSTANCE: TTSManager? = null
         
@@ -42,8 +45,16 @@ class TTSManager private constructor(private val context: Context) {
                 INSTANCE ?: TTSManager(context.applicationContext).also { INSTANCE = it }
             }
         }
+
+        /**
+         * 不同模型返回音频配置可能不同，动态调整
+         * */
+        fun resetPlayer(channel: Int) {
+            mChannel = channel
+            BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, channel, AUDIO_FORMAT)
+        }
     }
-    
+
     private var audioTrack: AudioTrack? = null
     private var isPlaying = false
     private var playingJob: Job? = null
@@ -213,7 +224,7 @@ class TTSManager private constructor(private val context: Context) {
                     .setAudioAttributes(audioAttributes!!)
                     .setAudioFormat(AudioFormat.Builder()
                         .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(CHANNEL_CONFIG)
+                        .setChannelMask(mChannel)
                         .setEncoding(AUDIO_FORMAT)
                         .build())
                     .setBufferSizeInBytes(BUFFER_SIZE)
@@ -222,7 +233,7 @@ class TTSManager private constructor(private val context: Context) {
                 AudioTrack(
                     AudioManager.STREAM_MUSIC,
                     SAMPLE_RATE,
-                    CHANNEL_CONFIG,
+                    mChannel,
                     AUDIO_FORMAT,
                     BUFFER_SIZE,
                     AudioTrack.MODE_STREAM
