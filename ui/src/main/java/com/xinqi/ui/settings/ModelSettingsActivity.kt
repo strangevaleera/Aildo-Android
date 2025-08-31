@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xinqi.ui.theme.AildoTheme
 import com.xinqi.utils.llm.LLMManager
 import com.xinqi.utils.llm.model.LLMModel
+import com.xinqi.utils.llm.model.implementedModels
 import com.xinqi.utils.llm.tts.model.VoiceInfo
 import com.xinqi.utils.llm.tts.model.TTSFactory
 import com.xinqi.utils.llm.tts.model.TTSModel
@@ -212,7 +213,7 @@ private fun LLMModelSelectionCard(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    LLMModel.entries.forEach { model ->
+                    implementedModels().forEach { model ->
                         DropdownMenuItem(
                             text = { Text(model.displayName) },
                             onClick = {

@@ -270,7 +270,7 @@ class AildoBluetoothManager private constructor(private val context: Context) {
             discoveredDevices[deviceAddress] = device
             
             // 解析广播数据
-            val broadcastData = parseManufacturerData(scanRecord?.manufacturerSpecificData as Map<Int, ByteArray>?)
+            val broadcastData = parseManufacturerData(scanRecord?.manufacturerSpecificData)
             
             notifyDeviceDiscovered(device, broadcastData)
         } else {
@@ -291,7 +291,7 @@ class AildoBluetoothManager private constructor(private val context: Context) {
         // 检查厂商数据
         val manufacturerData = scanRecord?.manufacturerSpecificData
         if (manufacturerData != null) {
-            val data = manufacturerData[0x0045] // Company ID 0x0045
+            val data = manufacturerData.get(0x0045) // Company ID 0x0045
             if (data != null && data.size >= 4) {
                 // 检查前4字节是否是 "XQT1"
                 if (data[0] == 0x58.toByte() && data[1] == 0x51.toByte() && 
@@ -307,10 +307,10 @@ class AildoBluetoothManager private constructor(private val context: Context) {
     /**
      * 解析厂商数据
      */
-    private fun parseManufacturerData(manufacturerData: Map<Int, ByteArray>?): BroadcastData? {
+    private fun parseManufacturerData(manufacturerData: android.util.SparseArray<ByteArray>?): BroadcastData? {
         if (manufacturerData == null) return null
         
-        val data = manufacturerData[BluetoothProtocol.CompanyId.XIN_QI]
+        val data = manufacturerData.get(BluetoothProtocol.CompanyId.XIN_QI)
         return if (data != null) {
             SvakomBtCodec.parseBroadcastData(data)
         } else null
@@ -518,10 +518,12 @@ class AildoBluetoothManager private constructor(private val context: Context) {
         
         try {
             val data = packet.toByteArray()
+            //val data = byteArrayOf(0x5A, 0x03, 0x00, 0x00, 0x01, 0x62, 0x00)
             writeCharacteristic?.value = data
             val success = currentGatt?.writeCharacteristic(writeCharacteristic) == true
             if (success) {
-                logI("发送数据: ${data.joinToString(", ") { "0x${it.toString(16).uppercase()}" }}")
+                //logI("发送数据: ${data.joinToString(", ") { "0x${it.toString(16).uppercase()}" }}")
+                logI("发送数据: ${data.joinToString(", ") { "0x${String.format("%02X", it)}" }}")
                 // 设置写入超时
                 scope.launch {
                     delay(WRITE_TIMEOUT)

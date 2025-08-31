@@ -1,6 +1,7 @@
 package com.xinqi.utils.llm.tts.provider
 
 import android.content.Context
+import android.media.AudioFormat
 import com.google.gson.Gson
 import com.xinqi.utils.llm.tts.*
 import com.xinqi.utils.llm.tts.auth.JWTTokenGenerator
@@ -28,6 +29,11 @@ class RirixinTTSProvider(
     private val context: Context,
     private val config: TTSConfig
 ) : TTSProvider {
+
+    init {
+        // 根据不同模型切换tts播放配置
+        setAudioChannel(config.model.modelId)
+    }
     
     private val client = OkHttpClient.Builder()
         .connectTimeout(config.timeout, TimeUnit.MILLISECONDS)
@@ -270,4 +276,30 @@ class RirixinTTSProvider(
         val gender: String,
         val description: String?
     )
+
+    companion object {
+
+        /**
+         * 因商汤日日新不同模型接口不同，建设此方法.
+         * */
+        fun getBaseUrl(modelId: String?): String {
+            return when (modelId) {
+                "nova-tts-1" -> "https://api.sensenova.cn/v1/audio/speech"
+                "SenseNova-Audio-Fusion-0603" -> "https://api.sensenova.cn/v1/audio/tts"
+                else -> "https://api.sensenova.cn/v1/audio/tts"
+            }
+        }
+
+        /**
+         * 因商汤日日新不同模型音频格式不同，建设此方法.
+         * */
+        fun setAudioChannel(modelId: String?) {
+            val channel = when (modelId) {
+                "nova-tts-1" -> AudioFormat.CHANNEL_OUT_MONO
+                "SenseNova-Audio-Fusion-0603" -> AudioFormat.CHANNEL_OUT_STEREO
+                else -> AudioFormat.CHANNEL_OUT_STEREO
+            }
+            TTSManager.resetPlayer(channel)
+        }
+    }
 }
