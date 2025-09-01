@@ -74,7 +74,7 @@ object ModelConfig {
      * 获取所有支持的TTS模型
      */
     fun getAllModels(): List<TTSModel> {
-        return RIRIXIN_MODELS + MINIMAX_MODELS + AZURE_MODELS
+        return RIRIXIN_MODELS + MINIMAX_MODELS// + AZURE_MODELS
     }
     
     /**
