@@ -50,6 +50,7 @@ dependencies {
     implementation libs.retrofit.converter.gson
     implementation libs.gson
     implementation libs.media3.common
+    implementation libs.media3.exoplayer
     
     implementation 'com.auth0:java-jwt:4.4.0'
     
