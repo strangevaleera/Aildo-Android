@@ -28,8 +28,8 @@ object SvakomBtCodec {
         return SvakomPacket(
             command = BluetoothProtocol.Commands.CMD_VIBRATION_CONTROL,
             param1 = control.motorId,
-            param2 = control.mode,
-            param3 = control.intensity
+            param3 = control.mode,
+            param4 = control.intensity
         )
     }
 
