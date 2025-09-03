@@ -5,7 +5,7 @@ package com.xinqi.utils.llm.model
  * 选中的三方基座大模型
  */
 enum class LLMModel(val displayName: String, val modelId: String) {
-    DOUBAO("豆包", "doubao-1-5-pro-32k-250115"),
+    DOUBAO("豆包", "doubao-1-5-pro-32k-character-250228"),
     CHATGPT_3_5("ChatGPT-3.5", "gpt-3.5-turbo"),
     CHATGPT_4("ChatGPT-4", "gpt-4"),
     CHATGPT_4_TURBO("ChatGPT-4-Turbo", "gpt-4-turbo-preview"),

@@ -13,11 +13,40 @@ import com.xinqi.utils.log.showResult
 object LLMIntegrator {
 
     lateinit var mLLmManager: LLMManager
+    
+    // 存储剧情上下文
+    private var storyContext: String = ""
+    private var isStoryInitialized: Boolean = false
 
     fun init(context: Context) {
         mLLmManager = LLMManager.getInstance(context)
-
         mLLmManager.initializeModel(context, LLMModel.DOUBAO)
+        
+        // 添加预热对话
+        warmUpAI()
+    }
+    
+    /**
+     * AI预热方法 - 应用启动时自动发送预热消息，生成剧情开头
+     */
+    private fun warmUpAI() {
+        logI("开始AI预热，生成剧情开头...")
+        
+        val warmUpPrompt = PromptTemplate(
+            name = "剧情生成",
+            description = "生成剧情开头的预热对话",
+            template = TEMPLATE2,
+            variables = listOf("question")
+        )
+        
+        // 发送预热消息，让AI生成剧情开头
+        mLLmManager.textChat("请开始我们的故事，描述我们初次相遇的场景", warmUpPrompt) { response ->
+            logI("AI预热完成，生成剧情: $response")
+            // 保存生成的剧情到上下文
+            storyContext = response
+            isStoryInitialized = true
+            logI("剧情已保存，后续对话将延续此故事")
+        }
     }
 
     private const val TEMPLATE = "任务\n" +
@@ -65,16 +94,81 @@ object LLMIntegrator {
             "\n" +
             "模型的输出不应该带时间。\n"
 
-    private const val TEMPLATE1 = "你是一个只属于我的优质男友, 专门用于提供情绪价值的专属男友，性格有点坏，请回答：{{question}}"
+    private const val TEMPLATE1 = "请回答：{{question}}\n" +
+            "\n" +
+            "回答应该尽量简短，控制在 30 字以内。使用中文回答。\n" +
+            "\n" +
+            "不要体现出机器人的特征。\n" +
+            "\n" +
+            "不要过于频繁的使用机器人术语。\n" +
+            "\n" +
+            "句子结尾不要带有 “啊” 的语气词。\n" +
+            "\n" +
+            "单次回复的长度不应过长，应该是较为简短的日常对话，语气可以参考输出示例。\n" +
+            "\n" +
+            "对话内容避免重复同一个话题，避免出现相同的短句。\n" +
+            "\n" +
+            "模型的回复内容避免直接复制输出示例与经典台词，输出示例与经典台词仅供参考。\n" +
+            "\n" +
+            "模型的输出不应该带时间。\n"
+
+
+    private const val TEMPLATE2 = "请你扮演一个名为「陆沉」的虚拟角色，并基于以下人设展开剧情互动：\n" +
+
+    "人物特质：冷静理智、节制自律，外表疏离但内心深藏情感，言语简洁有力，习惯用冷静分析的方式表达。\n" +
+
+    "背景：现代都市，成功的商界精英，重视利益与目标，也渴望真正理解与情感联结。\n" +
+
+    "兴趣爱好：喜欢哲学与心理学类阅读，偶尔会旅行或运动，保持理性与身体的平衡。\n" +
+
+            "剧情需要包含以下阶段：\n" +
+
+    "相识：描写两人初次遇见的场景（例如社交场合或偶然邂逅），加入简短的开场对白，体现陆沉的冷静与克制。\n" +
+
+    "关系发展：通过几次互动逐渐拉近距离，体现陆沉外冷内热的一面，增加暧昧与张力。\n" +
+
+    "高潮场景（车内约会）：在一次晚餐约会结束后，两人单独待在车内，氛围逐渐升温，最后发生车震。需给出关键对白，并提供至少两个分支选择（如：克制/主动；温柔/强势）。\n" +
+
+    "结果：给出一个理想化的情感走向，例如从身体的亲密延伸到情感的联结，或埋下进一步发展的伏笔。\n" +
+
+    "对话要求：\n" +
+    "- 保持陆沉的性格特征：冷静理智、节制自律\n" +
+    "- 外表疏离但内心深藏情感\n" +
+    "- 符合商界精英的身份和气质\n" +
+    "- 回答应该尽量简短，控制在100字以内\n" +
+    "- 使用中文回答，避免机器人特征\n" +
+    "- 对话内容避免重复同一个话题\n" +
+    "- 不要体现机器人的特征\n" +
+    "\n" +
+    "现在请回答用户的问题：{{question}}"
     fun query(context: Context, query: String, onResponse: (String) -> Unit) {
+        // 构建包含剧情上下文的完整Prompt
+        val fullTemplate = if (isStoryInitialized && storyContext.isNotEmpty()) {
+            // 如果已有剧情，在模板前加上剧情上下文
+            "剧情背景：$storyContext\n\n" + TEMPLATE2
+        } else {
+            // 如果没有剧情，使用原始模板
+            TEMPLATE2
+        }
+        
         val customPrompt = PromptTemplate(
-            name = "私人男友-大厦比",
-            description = "",
-            template = TEMPLATE1,
+            name = "陆沉-剧情延续",
+            description = "包含剧情上下文的对话模板",
+            template = fullTemplate,
             variables = listOf("question")
         )
+        
+        logI("发送对话请求，剧情上下文: ${if (isStoryInitialized) "已加载" else "未初始化"}")
+        
         mLLmManager.textChat(query, customPrompt) { response ->
             logI("LLMIntegrator.query 收到响应: $response")
+            
+            // 更新剧情上下文，包含新的对话内容
+            if (isStoryInitialized) {
+                storyContext += "\n用户: $query\n陆沉: $response"
+                logI("剧情上下文已更新")
+            }
+            
             onResponse.invoke(response)
 
             mLLmManager.textToSpeech(
@@ -120,5 +214,31 @@ object LLMIntegrator {
             }
         }
     }
-
+    
+    /**
+     * 获取当前剧情状态
+     */
+    fun getStoryStatus(): String {
+        return if (isStoryInitialized) {
+            "剧情已初始化，当前长度: ${storyContext.length} 字符"
+        } else {
+            "剧情未初始化"
+        }
+    }
+    
+    /**
+     * 获取当前剧情内容
+     */
+    fun getCurrentStory(): String {
+        return storyContext
+    }
+    
+    /**
+     * 重置剧情
+     */
+    fun resetStory() {
+        storyContext = ""
+        isStoryInitialized = false
+        logI("剧情已重置")
+    }
 }

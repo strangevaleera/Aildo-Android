@@ -13,6 +13,11 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
+import java.security.cert.X509Certificate
+import okhttp3.internal.tls.OkHostnameVerifier
 
 /**
  * 豆包模型,火山云接入
@@ -20,10 +25,54 @@ import java.util.concurrent.TimeUnit
  */
 class DoubaoProvider(private val config: LLMConfig) : LLMProvider {
     
+    /**
+     * 创建信任所有证书的TrustManager（仅用于测试）
+     */
+    private fun createTrustAllCerts(): Array<TrustManager> {
+        return arrayOf(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        })
+    }
+    
     private val client = OkHttpClient.Builder()
         .connectTimeout(config.timeout, TimeUnit.MILLISECONDS)
         .readTimeout(config.timeout, TimeUnit.MILLISECONDS)
         .writeTimeout(config.timeout, TimeUnit.MILLISECONDS)
+        .dns(object : okhttp3.Dns {
+            override fun lookup(hostname: String): List<java.net.InetAddress> {
+                try {
+                    logI("DNS解析: $hostname")
+                    
+                    // 如果是豆包域名，提供备选IP地址
+                    if (hostname == "ark.cn-beijing.volces.com") {
+                        try {
+                            // 先尝试正常DNS解析
+                            val addresses = java.net.InetAddress.getAllByName(hostname).toList()
+                            logI("DNS解析成功: $hostname -> ${addresses.map { it.hostAddress }}")
+                            return addresses
+                        } catch (e: Exception) {
+                            logE("正常DNS解析失败，使用备选IP: ${e.message}")
+                            // 如果DNS解析失败，使用备选IP地址
+                            val fallbackIP = "101.126.30.253"
+                            val fallbackAddress = java.net.InetAddress.getByName(fallbackIP)
+                            logI("使用备选IP: $fallbackIP")
+                            return listOf(fallbackAddress)
+                        }
+                    } else {
+                        // 其他域名正常解析
+                        val addresses = java.net.InetAddress.getAllByName(hostname).toList()
+                        logI("DNS解析成功: $hostname -> ${addresses.map { it.hostAddress }}")
+                        return addresses
+                    }
+                } catch (e: Exception) {
+                    logE("DNS解析失败: $hostname, 错误: ${e.message}")
+                    throw e
+                }
+            }
+        })
+        .hostnameVerifier { _, _ -> true } // 忽略主机名验证
         .addInterceptor { chain ->
             val request = chain.request()
             logI("豆包请求: ${request.url}")
@@ -36,6 +85,11 @@ class DoubaoProvider(private val config: LLMConfig) : LLMProvider {
     
     override suspend fun chat(messages: List<Message>, promptTemplate: PromptTemplate?): String {
         try {
+            logI("DoubaoProvider.chat 开始执行")
+            logI("消息数量: ${messages.size}")
+            logI("API地址: ${config.baseUrl}")
+            logI("API密钥: ${config.apiKey.take(8)}...")
+            
             val requestBody = buildChatRequest(messages, promptTemplate)
             val request = Request.Builder()
                 .url("${config.baseUrl}/chat/completions")
@@ -47,6 +101,7 @@ class DoubaoProvider(private val config: LLMConfig) : LLMProvider {
             logI("发送豆包聊天请求到: ${config.baseUrl}")
             logI("请求头: Authorization=Bearer ${config.apiKey.take(8)}...")
             logI("请求体: ${gson.toJson(requestBody)}")
+            
             val response = client.newCall(request).execute()
             logI("豆包响应状态码: ${response.code}")
 
@@ -66,10 +121,14 @@ class DoubaoProvider(private val config: LLMConfig) : LLMProvider {
         } catch (e: UnknownHostException) {
             val errorMsg = "无法解析豆包API地址: ${config.baseUrl}，请检查网络连接和API地址配置"
             logE(errorMsg)
+            logE("异常类型: ${e.javaClass.simpleName}")
+            logE("异常堆栈: ${e.stackTraceToString()}")
             throw Exception(errorMsg)
         } catch (e: Exception) {
             val errorMsg = "豆包聊天异常: ${e.message}"
             logE(errorMsg)
+            logE("异常类型: ${e.javaClass.simpleName}")
+            logE("异常堆栈: ${e.stackTraceToString()}")
             throw Exception(errorMsg)
         }
     }

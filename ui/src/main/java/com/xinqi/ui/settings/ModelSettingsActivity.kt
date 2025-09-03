@@ -57,6 +57,10 @@ fun ModelSettingsScreen(
     viewModel: ModelSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val activity = context as? android.app.Activity
+    androidx.activity.compose.BackHandler {
+        activity?.finish()
+    }
     val scope = rememberCoroutineScope()
     
     val currentLLMModel by viewModel.currentLLMModel.collectAsState()
@@ -77,7 +81,9 @@ fun ModelSettingsScreen(
             TopAppBar(
                 title = { Text("模型设置") },
                 navigationIcon = {
-                    IconButton(onClick = { /* 返回上一页 */ }) {
+                    IconButton(onClick = {
+                        activity?.finish()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 }
@@ -135,6 +141,7 @@ fun ModelSettingsScreen(
                     onClick = {
                         scope.launch {
                             viewModel.applySettings(context, llmManager)
+                            activity?.finish()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

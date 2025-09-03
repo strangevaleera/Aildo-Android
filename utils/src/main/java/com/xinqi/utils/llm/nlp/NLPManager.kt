@@ -17,6 +17,7 @@ import com.xinqi.utils.log.logE
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -40,7 +41,7 @@ class NLPManager private constructor(private val context: Context) {
         }
     }
     
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val modelProviders = ConcurrentHashMap<LLMModel, LLMProvider>()
     private val promptManager = PromptManager()
     
@@ -104,19 +105,29 @@ class NLPManager private constructor(private val context: Context) {
         
         scope.launch {
             try {
+                logI("NLPManager.chat 协程开始执行")
                 val response = provider.chat(messages, promptTemplate)
                 logI("NLPManager.chat provider.chat返回: $response")
                 
                 withContext(Dispatchers.Main) {
-                    callback(response)
-                    logI("NLPManager.chat callback完成")
-                    notifyChatResponse(response, model)
+                    try {
+                        callback(response)
+                        logI("NLPManager.chat callback完成")
+                        notifyChatResponse(response, model)
+                    } catch (e: Exception) {
+                        logE("主线程回调异常: ${e.message}")
+                        e.printStackTrace()
+                    }
                 }
             } catch (e: Exception) {
                 logE("聊天失败: ${e.message}")
                 e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    notifyError("聊天失败: ${e.message}", model)
+                try {
+                    withContext(Dispatchers.Main) {
+                        notifyError("聊天失败: ${e.message}", model)
+                    }
+                } catch (e2: Exception) {
+                    logE("错误通知失败: ${e2.message}")
                 }
             }
         }
