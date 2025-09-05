@@ -38,6 +38,11 @@
             android:exported="false"
             android:theme="@style/Theme.Aiildo" />
         
+        <activity
+            android:name="com.xinqi.ui.bluetooth.BluetoothManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Aiildo" />
+        
     </application>
 
 </manifest>
