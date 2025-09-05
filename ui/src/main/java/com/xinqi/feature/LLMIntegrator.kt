@@ -4,6 +4,7 @@ import android.content.Context
 import com.xinqi.utils.llm.LLMManager
 import com.xinqi.utils.llm.model.LLMModel
 import com.xinqi.utils.llm.model.PromptTemplate
+import com.xinqi.utils.mcp.BluetoothControlCommand
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
 
@@ -18,6 +19,31 @@ object LLMIntegrator {
         mLLmManager = LLMManager.getInstance(context)
 
         mLLmManager.initializeModel(context, LLMModel.DOUBAO)
+        
+        // 添加MCP事件监听器
+        mLLmManager.addEventListener(object : LLMManager.LLMEventListener {
+            override fun onModelChanged(model: LLMModel) {
+                logI("LLM模型已切换: ${model.displayName}")
+            }
+            
+            override fun onConfigUpdated(config: com.xinqi.utils.llm.LLMConfig) {
+                logI("LLM配置已更新")
+            }
+            
+            override fun onError(error: String) {
+                logI("LLM错误: $error")
+            }
+            
+            override fun onBluetoothCommandsExecuted(commands: List<BluetoothControlCommand>, results: List<Boolean>) {
+                logI("蓝牙命令执行完成: ${commands.size}个命令，成功${results.count { it }}个")
+                commands.forEachIndexed { index, command ->
+                    logI("命令${index + 1}: ${command.action.value} - ${if (results[index]) "成功" else "失败"}")
+                }
+            }
+        })
+        
+        // 开始MCP会话
+        mLLmManager.startMCPSession("llm_integrator_user", "default_device")
     }
 
     private const val TEMPLATE = "任务\n" +
@@ -119,6 +145,55 @@ object LLMIntegrator {
                 logI("LLM", "收到片段: $chunk")
             }
         }
+    }
+    
+    /**
+     * 支持蓝牙控制的查询方法
+     */
+    fun queryWithBluetoothControl(context: Context, query: String, onResponse: (String) -> Unit) {
+        val customPrompt = PromptTemplate(
+            name = "蓝牙控制助手",
+            description = "支持蓝牙设备控制的智能助手",
+            template = "你是一个智能助手，可以理解用户的指令并控制蓝牙设备。当用户提到震动、加热、设备控制等相关指令时，请直接回复相应的控制指令。\n\n用户问题：{{question}}",
+            variables = listOf("question")
+        )
+        
+        mLLmManager.textChat(query, customPrompt) { response ->
+            logI("LLMIntegrator.queryWithBluetoothControl 收到响应: $response")
+            onResponse.invoke(response)
+            
+            // TTS播放回复
+            mLLmManager.textToSpeech(
+                text = response,
+                speed = 1.0f,
+                pitch = 1.0f
+            ) { audioFile ->
+                if (audioFile != null) {
+                    mLLmManager.getTTSManager().playAudio(audioFile)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 直接发送蓝牙控制命令
+     */
+    fun sendBluetoothCommand(
+        method: String,
+        params: Map<String, Any> = emptyMap(),
+        onResult: (Boolean) -> Unit
+    ) {
+        mLLmManager.sendMCPRequest(method, params) { response ->
+            logI("蓝牙命令执行结果: ${response.success}")
+            onResult(response.success)
+        }
+    }
+    
+    /**
+     * 获取蓝牙状态
+     */
+    fun getBluetoothStatus(): Map<String, Any> {
+        return mLLmManager.getMCPManager().getBluetoothStatus()
     }
 
 }
