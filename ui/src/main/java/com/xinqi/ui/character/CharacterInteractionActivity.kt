@@ -1,5 +1,6 @@
 package com.xinqi.ui.character
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -48,6 +50,8 @@ class CharacterInteractionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // 蓝牙管理器将在Composable中初始化
+        
         setContent {
             AildoTheme {
                 Surface(
@@ -77,6 +81,11 @@ fun CharacterInteractionScreen(
     val showCharacterSelector by viewModel.showCharacterSelector.collectAsState()
     val bluetoothConnected by viewModel.bluetoothConnected.collectAsState()
     val context = LocalContext.current
+    
+    // 初始化蓝牙管理器
+    LaunchedEffect(Unit) {
+        viewModel.initializeBluetoothManager(context)
+    }
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -172,7 +181,14 @@ private fun BluetoothStatusIndicator(
     isConnected: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     Card(
+        onClick = {
+            // 点击打开蓝牙管理页面
+            val intent = Intent(context, com.xinqi.ui.bluetooth.BluetoothManagerActivity::class.java)
+            context.startActivity(intent)
+        },
         modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = if (isConnected)
@@ -185,11 +201,22 @@ private fun BluetoothStatusIndicator(
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icons.Default.Bluetooth
+            Icon(
+                imageVector = if (isConnected) Icons.Default.Bluetooth else Icons.Default.BluetoothDisabled,
+                contentDescription = null,
+                tint = if (isConnected) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.error
+            )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = if (isConnected) "已连接" else "未连接",
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isConnected) 
+                    MaterialTheme.colorScheme.onPrimaryContainer 
+                else 
+                    MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }

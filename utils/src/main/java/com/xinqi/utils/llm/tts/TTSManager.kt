@@ -1,11 +1,6 @@
 package com.xinqi.utils.llm.tts
 
 import android.content.Context
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioManager
-import android.media.AudioTrack
-import android.os.Build
 import com.xinqi.utils.llm.tts.model.SAMPLE_RATE
 import com.xinqi.utils.llm.tts.model.TTSConfig
 import com.xinqi.utils.llm.tts.model.TTSProviderType
@@ -16,26 +11,22 @@ import com.xinqi.utils.log.logI
 import com.xinqi.utils.llm.tts.provider.RirixinTTSProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
 
 /**
  * TTS（文本转语音）管理器
  * 1. 支持多种TTS服务提供商
- * 2. 统一管理TTS配置和音频播放
+ * 2. 统一管理TTS配置
  * 3. 支持流式TTS和文件TTS
+ * 4. 使用TTSPlayer进行音频播放
  */
 class TTSManager private constructor(private val context: Context) {
     
     companion object {
         private const val TAG = "TTSManager"
-        private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_STEREO
-        private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        private var BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
-
-        private var mChannel: Int = CHANNEL_CONFIG
-        private var audioFormat: Int = AUDIO_FORMAT
+        private const val CHANNEL_CONFIG = 2 // 立体声
+        private const val AUDIO_FORMAT = 2 // 16位PCM
 
         @Volatile
         private var INSTANCE: TTSManager? = null
@@ -50,19 +41,17 @@ class TTSManager private constructor(private val context: Context) {
          * 不同模型返回音频配置可能不同，动态调整
          * */
         fun resetPlayer(channel: Int) {
-            mChannel = channel
-            BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, channel, AUDIO_FORMAT)
+            // ExoPlayer会自动处理音频配置，这里保留接口兼容性
         }
     }
 
-    private var audioTrack: AudioTrack? = null
-    private var isPlaying = false
-    private var playingJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.IO)
-    
     private val eventListeners = mutableListOf<TTSEventListener>()
     private var currentProvider: TTSProvider? = null
     private var currentConfig: TTSConfig? = null
+    
+    // 使用TTSPlayer进行音频播放
+    private val ttsPlayer = TTSPlayer.getInstance(context)
+    private val scope = CoroutineScope(Dispatchers.IO)
     
     /**
      * TTS事件监听器接口
@@ -99,7 +88,24 @@ class TTSManager private constructor(private val context: Context) {
             }
         }
         
-        logI("TTS提供商初始化完成: ${config.provider}")
+        // 设置TTSPlayer的事件监听器
+        ttsPlayer.addEventListener(object : TTSPlayer.TTSPlayerListener {
+            override fun onPlayStarted() {
+                notifyTTSStarted()
+            }
+            
+            override fun onPlayCompleted() {
+                notifyTTSCompleted()
+            }
+            
+            override fun onPlayStopped() {
+                notifyTTSStopped()
+            }
+            
+            override fun onPlayError(error: String) {
+                notifyError(error)
+            }
+        })
     }
     
     /**
@@ -194,185 +200,52 @@ class TTSManager private constructor(private val context: Context) {
     }
     
     /**
-     * 获取当前TTS提供商信息
+     * 播放音频文件
      */
-    fun getCurrentProviderInfo(): String {
+    fun playAudio(audioFile: File) {
+        ttsPlayer.playAudio(audioFile)
+    }
+
+    /**
+     * 停止播放
+     */
+    fun stopPlayback() {
+        ttsPlayer.stopPlayback()
+    }
+
+    /**
+     * 检查是否正在播放
+     */
+    fun isPlaying(): Boolean = ttsPlayer.isPlaying()
+    
+    /**
+     * 获取当前TTS提供商
+     */
+    fun getCurrentProvider(): TTSProvider? = currentProvider
+    
+    /**
+     * 获取当前TTS配置
+     */
+    fun getCurrentConfig(): TTSConfig? = currentConfig
+    
+    /**
+     * 获取模型信息
+     */
+    fun getModelInfo(): String {
         return currentProvider?.getModelInfo() ?: "未初始化"
     }
     
     /**
-     * 播放音频文件
+     * 释放资源
      */
-    fun playAudio(audioFile: File) {
-        if (isPlaying) {
-            logI("音频正在播放中")
-            return
-        }
-        
+    fun release() {
         try {
-            val audioAttributes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            } else {
-                null
-            }
-            
-            audioTrack = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                AudioTrack.Builder()
-                    .setAudioAttributes(audioAttributes!!)
-                    .setAudioFormat(AudioFormat.Builder()
-                        .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(mChannel)
-                        .setEncoding(AUDIO_FORMAT)
-                        .build())
-                    .setBufferSizeInBytes(BUFFER_SIZE)
-                    .build()
-            } else {
-                AudioTrack(
-                    AudioManager.STREAM_MUSIC,
-                    SAMPLE_RATE,
-                    mChannel,
-                    AUDIO_FORMAT,
-                    BUFFER_SIZE,
-                    AudioTrack.MODE_STREAM
-                )
-            }
-            
-            isPlaying = true
-            notifyTTSStarted()
-            
-            playingJob = scope.launch {
-                try {
-                    audioTrack?.play()
-                    
-                    val audioData = audioFile.readBytes()
-                    val headerSize = 44 // WAV文件头大小
-                    val actualAudioData = audioData.copyOfRange(headerSize, audioData.size)
-                    
-                    audioTrack?.write(actualAudioData, 0, actualAudioData.size)
-                    
-                    audioTrack?.stop()
-                    audioTrack?.release()
-                    audioTrack = null
-                    
-                    isPlaying = false
-                    notifyTTSCompleted()
-                    
-                } catch (e: Exception) {
-                    logE("播放音频失败: ${e.message}")
-                    isPlaying = false
-                    notifyError("播放音频失败: ${e.message}")
-                }
-            }
-            
-            logI("开始播放音频: ${audioFile.absolutePath}")
-            
+            ttsPlayer.release()
+            logI("TTSManager资源已释放")
         } catch (e: Exception) {
-            logE("初始化音频播放失败: ${e.message}")
-            notifyError("初始化音频播放失败: ${e.message}")
+            logE("释放资源失败: ${e.message}")
         }
     }
-
-    /**
-     * 播放音频文件（带完成回调）
-     */
-    fun playAudio(audioFile: File, onComplete: () -> Unit) {
-        if (isPlaying) {
-            logI("音频正在播放中")
-            return
-        }
-        
-        try {
-            val audioAttributes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            } else {
-                null
-            }
-            
-            audioTrack = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                AudioTrack.Builder()
-                    .setAudioAttributes(audioAttributes!!)
-                    .setAudioFormat(AudioFormat.Builder()
-                        .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(mChannel)
-                        .setEncoding(AUDIO_FORMAT)
-                        .build())
-                    .setBufferSizeInBytes(BUFFER_SIZE)
-                    .build()
-            } else {
-                AudioTrack(
-                    AudioManager.STREAM_MUSIC,
-                    SAMPLE_RATE,
-                    mChannel,
-                    AUDIO_FORMAT,
-                    BUFFER_SIZE,
-                    AudioTrack.MODE_STREAM
-                )
-            }
-            
-            isPlaying = true
-            notifyTTSStarted()
-            
-            playingJob = scope.launch {
-                try {
-                    audioTrack?.play()
-                    
-                    val audioData = audioFile.readBytes()
-                    val headerSize = 44 // WAV文件头大小
-                    val actualAudioData = audioData.copyOfRange(headerSize, audioData.size)
-                    
-                    audioTrack?.write(actualAudioData, 0, actualAudioData.size)
-                    
-                    audioTrack?.stop()
-                    audioTrack?.release()
-                    audioTrack = null
-                    
-                    isPlaying = false
-                    notifyTTSCompleted()
-                    onComplete()
-                    
-                } catch (e: Exception) {
-                    logE("播放音频失败: ${e.message}")
-                    isPlaying = false
-                    notifyError("播放音频失败: ${e.message}")
-                    onComplete()
-                }
-            }
-            
-            logI("开始播放音频: ${audioFile.absolutePath}")
-            
-        } catch (e: Exception) {
-            logE("初始化音频播放失败: ${e.message}")
-            notifyError("初始化音频播放失败: ${e.message}")
-            onComplete()
-        }
-    }
-
-    fun stopPlayback() {
-        if (!isPlaying) return
-        
-        try {
-            playingJob?.cancel()
-            
-            audioTrack?.stop()
-            audioTrack?.release()
-            audioTrack = null
-            
-            isPlaying = false
-            notifyTTSStopped()
-            logI("音频播放已停止")
-            
-        } catch (e: Exception) {
-            logE("停止播放失败: ${e.message}")
-        }
-    }
-
-    fun isPlaying(): Boolean = isPlaying
     
     private fun notifyTTSStarted() {
         eventListeners.forEach { it.onTTSStarted() }

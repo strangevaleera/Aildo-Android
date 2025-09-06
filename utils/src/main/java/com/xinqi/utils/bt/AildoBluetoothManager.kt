@@ -518,7 +518,7 @@ class AildoBluetoothManager private constructor(private val context: Context) {
         
         try {
             val data = packet.toByteArray()
-            //val data = byteArrayOf(0x5A, 0x03, 0x00, 0x00, 0x01, 0x62, 0x00)
+            //val data = byteArrayOf(0x5A, 0x03, 0x00, 0x00, 0x03, 0x02, 0x00)
             writeCharacteristic?.value = data
             val success = currentGatt?.writeCharacteristic(writeCharacteristic) == true
             if (success) {
@@ -528,11 +528,15 @@ class AildoBluetoothManager private constructor(private val context: Context) {
                 scope.launch {
                     delay(WRITE_TIMEOUT)
                     // 如果超时，通知发送失败
-                    notifyDataSent(currentDevice!!, data, false)
+                    currentDevice?.run {
+                        notifyDataSent(this, data, false)
+                    }
                 }
             } else {
                 logE("发送数据失败")
-                notifyDataSent(currentDevice!!, data, false)
+                currentDevice?.run {
+                    notifyDataSent(this, data, false)
+                }
             }
             return success
         } catch (e: Exception) {

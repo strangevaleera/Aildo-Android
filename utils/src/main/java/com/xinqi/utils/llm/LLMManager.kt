@@ -11,6 +11,8 @@ import com.xinqi.utils.llm.model.PromptTemplate
 import com.xinqi.utils.llm.nlp.NLPManager
 import com.xinqi.utils.llm.tts.model.TTSFactory
 import com.xinqi.utils.llm.tts.TTSManager
+import com.xinqi.utils.mcp.MCPIntegrationManager
+import com.xinqi.utils.mcp.BluetoothControlCommand
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,12 +43,18 @@ class LLMManager private constructor(private val context: Context) {
     private val nlpManager = NLPManager.getInstance(context)
     private val ttsManager = TTSManager.getInstance(context)
     
+    // 延迟初始化MCPManager，避免循环依赖
+    private val mcpManager: MCPIntegrationManager by lazy { MCPIntegrationManager.getInstance(context) }
+    
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     private var currentConfig: LLMConfig? = null
     private var currentModel: LLMModel = LLMModel.DOUBAO
     
     private val eventListeners = mutableListOf<LLMEventListener>()
+    
+    // MCP会话管理
+    private var currentMCPSession: MCPIntegrationManager.MCPSession? = null
     
     /**
      * LLM事件监听器接口.
@@ -55,6 +63,7 @@ class LLMManager private constructor(private val context: Context) {
         fun onModelChanged(model: LLMModel)
         fun onConfigUpdated(config: LLMConfig)
         fun onError(error: String)
+        fun onBluetoothCommandsExecuted(commands: List<BluetoothControlCommand>, results: List<Boolean>)
     }
     
     fun addEventListener(listener: LLMEventListener) {
@@ -180,6 +189,9 @@ class LLMManager private constructor(private val context: Context) {
         val wrappedCallback = { response: String ->
             logI("LLMManager.textChat 收到回调响应: $response")
             onResponse(response)
+            
+            // 处理LLM回复中的蓝牙控制指令
+            processLLMResponseForBluetoothControl(response)
         }
         
         nlpManager.chat(messages, currentModel, promptTemplate, wrappedCallback)
@@ -195,7 +207,42 @@ class LLMManager private constructor(private val context: Context) {
     ) {
         val messages = listOf(Message.user(text))
         scope.launch {
-            nlpManager.chatStream(messages, currentModel, promptTemplate, onChunk)
+            nlpManager.chatStream(messages, currentModel, promptTemplate) { chunk, isComplete ->
+                onChunk(chunk, isComplete)
+                
+                // 如果是完整的回复，处理蓝牙控制指令
+                if (isComplete) {
+                    processLLMResponseForBluetoothControl(chunk)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 处理LLM回复中的蓝牙控制指令
+     */
+    private fun processLLMResponseForBluetoothControl(response: String) {
+        // 确保有活跃的MCP会话
+        if (currentMCPSession == null) {
+            currentMCPSession = mcpManager.startSession(
+                userId = "llm_user",
+                deviceId = "default_device"
+            )
+            logI("自动创建MCP会话: ${currentMCPSession?.sessionId}")
+        }
+        
+        currentMCPSession?.let { session ->
+            mcpManager.processLLMResponse(response, session.sessionId) { commands, results ->
+                if (commands.isNotEmpty()) {
+                    logI("LLM回复中检测到${commands.size}个蓝牙控制命令")
+                    commands.forEachIndexed { index, command ->
+                        logI("命令${index + 1}: ${command.action.value} - ${if (results[index]) "成功" else "失败"}")
+                    }
+                    
+                    // 通知事件监听器
+                    notifyBluetoothCommandsExecuted(commands, results)
+                }
+            }
         }
     }
     
@@ -315,6 +362,45 @@ class LLMManager private constructor(private val context: Context) {
 
     fun getTTSManager(): TTSManager = ttsManager
     
+    /**
+     * 获取MCP集成管理器
+     */
+    fun getMCPManager(): MCPIntegrationManager = mcpManager
+    
+    /**
+     * 开始MCP会话
+     */
+    fun startMCPSession(userId: String? = null, deviceId: String? = null): MCPIntegrationManager.MCPSession {
+        currentMCPSession = mcpManager.startSession(userId, deviceId)
+        return currentMCPSession!!
+    }
+    
+    /**
+     * 结束MCP会话
+     */
+    fun endMCPSession() {
+        currentMCPSession?.let { session ->
+            mcpManager.endSession(session.sessionId)
+            currentMCPSession = null
+        }
+    }
+    
+    /**
+     * 获取当前MCP会话
+     */
+    fun getCurrentMCPSession(): MCPIntegrationManager.MCPSession? = currentMCPSession
+    
+    /**
+     * 直接发送MCP请求
+     */
+    fun sendMCPRequest(
+        method: String,
+        params: Map<String, Any> = emptyMap(),
+        callback: (com.xinqi.utils.mcp.MCPResponse) -> Unit
+    ): String {
+        return mcpManager.sendMCPRequest(method, params, currentMCPSession?.sessionId, callback)
+    }
+    
     private fun notifyModelChanged(model: LLMModel) {
         eventListeners.forEach { it.onModelChanged(model) }
     }
@@ -325,5 +411,9 @@ class LLMManager private constructor(private val context: Context) {
     
     private fun notifyError(error: String) {
         eventListeners.forEach { it.onError(error) }
+    }
+    
+    private fun notifyBluetoothCommandsExecuted(commands: List<BluetoothControlCommand>, results: List<Boolean>) {
+        eventListeners.forEach { it.onBluetoothCommandsExecuted(commands, results) }
     }
 }
