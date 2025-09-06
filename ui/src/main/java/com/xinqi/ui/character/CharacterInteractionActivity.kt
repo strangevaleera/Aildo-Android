@@ -385,9 +385,10 @@ private fun ChatInterface(
     val messages = remember { mutableStateListOf<MessageItem>() }
     var nextId by remember { mutableStateOf(0L) }
     var isLoading by remember { mutableStateOf(false) }
-    var branchChoices by remember { mutableStateOf(LLMIntegrator.getBranchChoices().map { it.label to it.prompt }) }
+    var branchChoices by remember { mutableStateOf(emptyList<Pair<String, String>>()) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val warmUpDone by LLMIntegrator.warmUpCompleted.collectAsState(initial = false)
 
     Card(
         modifier = modifier.imePadding(),
@@ -447,57 +448,53 @@ private fun ChatInterface(
                                         onResponse = { response ->
                                             // 将多行按顺序推入，累积显示所有句子，依次播放音频
                                             val lines = response.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+                                            com.xinqi.utils.log.logI("UI", "about to play lines: count=${lines.size} -> ${lines}")
                                             scope.launch {
-                                                // 改为在播放阶段逐条添加与移除，保证同一时间只显示一条对白
-                                                // 所有文字显示完成后，依次播放每句的音频（基于播放完成回调串联）
-                                                scope.launch {
-                                                    var index = 0
-                                                    fun playNext() {
-                                                        if (index >= lines.size) {
-                                                            isLoading = false
-                                                            branchChoices = LLMIntegrator.getBranchChoices().map { it.label to it.prompt }
-                                                            return
+                                                for ((i, line) in lines.withIndex()) {
+                                                    com.xinqi.utils.log.logI("UI", "play line ${i+1}/${lines.size}: ${line}")
+                                                    // 合成语音并等待结果
+                                                    val deferred = kotlinx.coroutines.CompletableDeferred<java.io.File?>()
+                                                    LLMIntegrator.mLLmManager.textToSpeech(
+                                                        text = line,
+                                                        speed = 1.0f,
+                                                        pitch = 1.0f
+                                                    ) { audioFile -> deferred.complete(audioFile) }
+                                                    val audioFile = deferred.await()
+                                                    if (audioFile != null) {
+                    
+                                                        // 先启动播放
+                                                        LLMIntegrator.mLLmManager.getTTSManager().playAudio(audioFile)
+                                                        // 等待真正开始播放再显示文字
+                                                        var waitedMs = 0
+                                                        while (!LLMIntegrator.mLLmManager.getTTSManager().isPlaying() && waitedMs < 3000) {
+                                                            delay(30)
+                                                            waitedMs += 30
                                                         }
-                                                        val line = lines[index]
-                                                        // 添加当前句子作为唯一可见条目
+                                                        // 显示当前句子
                                                         messages.clear()
                                                         messages.add(MessageItem(id = nextId++, text = line, isFading = false))
-                                                        LLMIntegrator.mLLmManager.textToSpeech(
-                                                            text = line,
-                                                            speed = 1.0f,
-                                                            pitch = 1.0f
-                                                        ) { audioFile ->
-                                                            if (audioFile != null) {
-                                                                LLMIntegrator.mLLmManager.getTTSManager().playAudio(audioFile) {
-                                                                    // 如果不是最后一句，则淡出后移除；最后一句保持驻留
-                                                                    val isLast = (index == lines.size - 1)
-                                                                    if (!isLast && messages.isNotEmpty()) {
-                                                                        val last = messages.last()
-                                                                        val idx = messages.lastIndex
-                                                                        messages[idx] = last.copy(isFading = true)
-                                                                        scope.launch {
-                                                                            delay(600)
-                                                                            messages.clear()
-                                                                            index += 1
-                                                                            playNext()
-                                                                        }
-                                                                    } else {
-                                                                        // 最后一句：不清空，等待下一轮开始时由新句替换
-                                                                        index += 1
-                                                                        playNext()
-                                                                    }
-                                                                }
-                                                            } else {
-                                                                // 无音频也保持推进
-                                                                val isLast = (index == lines.size - 1)
-                                                                if (!isLast) messages.clear()
-                                                                index += 1
-                                                                playNext()
-                                                            }
+                                                        // 等待播放结束
+                                                        while (LLMIntegrator.mLLmManager.getTTSManager().isPlaying()) {
+                                                            delay(50)
                                                         }
+                                                    } else {
+                                                        // 无音频则直接显示并短暂停留
+                                                        messages.clear()
+                                                        messages.add(MessageItem(id = nextId++, text = line, isFading = false))
+                                                        delay(800)
                                                     }
-                                                    playNext()
+                                                    // 非最后一句则淡出并清空
+                                                    val isLast = (i == lines.lastIndex)
+                                                    if (!isLast && messages.isNotEmpty()) {
+                                                        val last = messages.last()
+                                                        val idx = messages.lastIndex
+                                                        messages[idx] = last.copy(isFading = true)
+                                                        delay(600)
+                                                        messages.clear()
+                                                    }
                                                 }
+                                                isLoading = false
+                                                branchChoices = LLMIntegrator.getBranchChoices().map { it.label to it.prompt }
                                             }
                                         }
                                     )
@@ -548,57 +545,53 @@ private fun ChatInterface(
                                 onResponse = { response ->
                                     // 将多行按顺序推入，累积显示所有句子，依次播放音频
                                     val lines = response.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+                                    com.xinqi.utils.log.logI("UI", "about to play lines: count=${lines.size} -> ${lines}")
                                     scope.launch {
-                                        // 改为在播放阶段逐条添加与移除，保证同一时间只显示一条对白
-                                        // 所有文字显示完成后，依次播放每句的音频（基于播放完成回调串联）
-                                        scope.launch {
-                                            var index = 0
-                                            fun playNext() {
-                                                if (index >= lines.size) {
-                                                    isLoading = false
-                                                    branchChoices = LLMIntegrator.getBranchChoices().map { it.label to it.prompt }
-                                                    return
+                                        for ((i, line) in lines.withIndex()) {
+                                            com.xinqi.utils.log.logI("UI", "play line ${i+1}/${lines.size}: ${line}")
+                                            // 合成语音并等待结果
+                                            val deferred = kotlinx.coroutines.CompletableDeferred<java.io.File?>()
+                                            LLMIntegrator.mLLmManager.textToSpeech(
+                                                text = line,
+                                                speed = 1.0f,
+                                                pitch = 1.0f
+                                            ) { audioFile -> deferred.complete(audioFile) }
+                                            val audioFile = deferred.await()
+                                            if (audioFile != null) {
+                    
+                                                // 先启动播放
+                                                LLMIntegrator.mLLmManager.getTTSManager().playAudio(audioFile)
+                                                // 等待真正开始播放再显示文字
+                                                var waitedMs = 0
+                                                while (!LLMIntegrator.mLLmManager.getTTSManager().isPlaying() && waitedMs < 3000) {
+                                                    delay(30)
+                                                    waitedMs += 30
                                                 }
-                                                val line = lines[index]
-                                                // 添加当前句子作为唯一可见条目
+                                                // 显示当前句子
                                                 messages.clear()
                                                 messages.add(MessageItem(id = nextId++, text = line, isFading = false))
-                                                LLMIntegrator.mLLmManager.textToSpeech(
-                                                    text = line,
-                                                    speed = 1.0f,
-                                                    pitch = 1.0f
-                                                ) { audioFile ->
-                                                    if (audioFile != null) {
-                                                        LLMIntegrator.mLLmManager.getTTSManager().playAudio(audioFile) {
-                                                            // 如果不是最后一句，则淡出后移除；最后一句保持驻留
-                                                            val isLast = (index == lines.size - 1)
-                                                            if (!isLast && messages.isNotEmpty()) {
-                                                                val last = messages.last()
-                                                                val idx = messages.lastIndex
-                                                                messages[idx] = last.copy(isFading = true)
-                                                                scope.launch {
-                                                                    delay(600)
-                                                                    messages.clear()
-                                                                    index += 1
-                                                                    playNext()
-                                                                }
-                                                            } else {
-                                                                // 最后一句：不清空，等待下一轮开始时由新句替换
-                                                                index += 1
-                                                                playNext()
-                                                            }
-                                                        }
-                                                    } else {
-                                                        // 无音频也保持推进
-                                                        val isLast = (index == lines.size - 1)
-                                                        if (!isLast) messages.clear()
-                                                        index += 1
-                                                        playNext()
-                                                    }
+                                                // 等待播放结束
+                                                while (LLMIntegrator.mLLmManager.getTTSManager().isPlaying()) {
+                                                    delay(50)
                                                 }
+                                            } else {
+                                                // 无音频则直接显示并短暂停留
+                                                messages.clear()
+                                                messages.add(MessageItem(id = nextId++, text = line, isFading = false))
+                                                delay(800)
                                             }
-                                            playNext()
+                                            // 非最后一句则淡出并清空
+                                            val isLast = (i == lines.lastIndex)
+                                            if (!isLast && messages.isNotEmpty()) {
+                                                val last = messages.last()
+                                                val idx = messages.lastIndex
+                                                messages[idx] = last.copy(isFading = true)
+                                                delay(600)
+                                                messages.clear()
+                                            }
                                         }
+                                        isLoading = false
+                                        branchChoices = LLMIntegrator.getBranchChoices().map { it.label to it.prompt }
                                     }
                                 }
                             )
