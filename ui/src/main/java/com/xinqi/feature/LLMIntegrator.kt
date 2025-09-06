@@ -6,6 +6,7 @@ import com.xinqi.utils.llm.model.LLMModel
 import com.xinqi.utils.llm.model.PromptTemplate
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
+import org.json.JSONObject
 
 /**
  * 大语言模型调用类
@@ -17,6 +18,10 @@ object LLMIntegrator {
     // 存储剧情上下文
     private var storyContext: String = ""
     private var isStoryInitialized: Boolean = false
+    // 最近一次模型返回的分支
+    data class BranchChoice(val id: String, val label: String, val prompt: String)
+    private var lastChoices: List<BranchChoice> = emptyList()
+    fun getBranchChoices(): List<BranchChoice> = lastChoices
 
     fun init(context: Context) {
         mLLmManager = LLMManager.getInstance(context)
@@ -41,9 +46,12 @@ object LLMIntegrator {
         
         // 发送预热消息，让AI生成剧情开头
         mLLmManager.textChat("请开始我们的故事，描述我们初次相遇的场景", warmUpPrompt) { response ->
-            logI("AI预热完成，生成剧情: $response")
+            val (line, choices, lines) = parseStructuredResponseV2(response)
+            lastChoices = choices
+            val merged = if (lines.isNotEmpty()) lines.joinToString("\n") else line
+            logI("AI预热完成，生成剧情: $merged")
             // 保存生成的剧情到上下文
-            storyContext = response
+            storyContext = merged
             isStoryInitialized = true
             logI("剧情已保存，后续对话将延续此故事")
         }
@@ -113,34 +121,35 @@ object LLMIntegrator {
             "模型的输出不应该带时间。\n"
 
 
-    private const val TEMPLATE2 = "请你扮演一个名为「陆沉」的虚拟角色，并基于以下人设展开剧情互动：\n" +
+    private const val TEMPLATE2 =
+        "请你扮演一个名为「陆沉」的虚拟角色，并基于以下人设展开剧情互动：\n" +
 
-    "人物特质：冷静理智、节制自律，外表疏离但内心深藏情感，言语简洁有力，习惯用冷静分析的方式表达。\n" +
+                "人物特质：冷静理智、节制自律，外表疏离但内心深藏情感，言语简洁有力，习惯用冷静分析的方式表达。\n" +
 
-    "背景：现代都市，成功的商界精英，重视利益与目标，也渴望真正理解与情感联结。\n" +
+                "背景：现代都市，成功的商界精英，重视利益与目标，也渴望真正理解与情感联结。\n" +
 
-    "兴趣爱好：喜欢哲学与心理学类阅读，偶尔会旅行或运动，保持理性与身体的平衡。\n" +
+                "兴趣爱好：喜欢哲学与心理学类阅读，偶尔会旅行或运动，保持理性与身体的平衡。\n" +
 
-            "剧情需要包含以下阶段：\n" +
+                "剧情需要包含以下阶段：\n" +
+                "相识：描写两人初次遇见的场景（例如社交场合或偶然邂逅），加入简短的开场对白，体现陆沉的冷静与克制。\n" +
+                "关系发展：通过几次互动逐渐拉近距离，体现陆沉外冷内热的一面，增加暧昧与张力。\n" +
+                "高潮场景（车内约会）：在一次晚餐约会结束后，两人单独待在车内，氛围逐渐升温，最后发生亲密互动。需给出关键对白，并提供至少两个分支选择（如：克制/主动；温柔/强势），分支文案必须自然、口语化。\n" +
+                "结果：给出一个理想化的情感走向，例如从身体的亲密延伸到情感的联结，或埋下进一步发展的伏笔。\n" +
 
-    "相识：描写两人初次遇见的场景（例如社交场合或偶然邂逅），加入简短的开场对白，体现陆沉的冷静与克制。\n" +
+                "输出格式要求（非常重要）：始终以严格 JSON 返回，不要包含任何多余解释或文字。\n" +
+                "格式示例：\n" +
+                "{\"lines\":[\"关键对白1\",\"关键对白2\"],\"choices\":[{\"id\":\"A\",\"label\":\"我想靠近你一点…\",\"prompt\":\"继续走主动暧昧路线\"},{\"id\":\"B\",\"label\":\"我先安静一下…\",\"prompt\":\"保持克制，转入温柔路线\"}],\"line\":\"关键对白1\"}\n" +
 
-    "关系发展：通过几次互动逐渐拉近距离，体现陆沉外冷内热的一面，增加暧昧与张力。\n" +
+                "要求：\n" +
+                "- 至少提供两个可供用户点击的分支（choices）。\n" +
+                "- lines 长度随机为 1~5 条，需具备强连贯性：同一轮内多句应承接且推进同一场景与情绪。\n" +
+                "- 仅输出陆沉对白，不要包含用户台词或角色前缀；每句≤40字，中文。\n" +
+                "- choices.label 必须是用户口语对白，而非抽象词。\n" +
+                "- choices.prompt 为简短中文引导（仅开发者可见）。\n" +
+                "- line 字段 = lines[0]，用于兼容旧客户端。\n" +
 
-    "高潮场景（车内约会）：在一次晚餐约会结束后，两人单独待在车内，氛围逐渐升温，最后发生车震。需给出关键对白，并提供至少两个分支选择（如：克制/主动；温柔/强势）。\n" +
+                "现在请回答用户的问题：{{question}}"
 
-    "结果：给出一个理想化的情感走向，例如从身体的亲密延伸到情感的联结，或埋下进一步发展的伏笔。\n" +
-
-    "对话要求：\n" +
-    "- 保持陆沉的性格特征：冷静理智、节制自律\n" +
-    "- 外表疏离但内心深藏情感\n" +
-    "- 符合商界精英的身份和气质\n" +
-    "- 回答应该尽量简短，控制在100字以内\n" +
-    "- 使用中文回答，避免机器人特征\n" +
-    "- 对话内容避免重复同一个话题\n" +
-    "- 不要体现机器人的特征\n" +
-    "\n" +
-    "现在请回答用户的问题：{{question}}"
     fun query(context: Context, query: String, onResponse: (String) -> Unit) {
         // 构建包含剧情上下文的完整Prompt
         val fullTemplate = if (isStoryInitialized && storyContext.isNotEmpty()) {
@@ -162,24 +171,69 @@ object LLMIntegrator {
         
         mLLmManager.textChat(query, customPrompt) { response ->
             logI("LLMIntegrator.query 收到响应: $response")
+            val (line, choices, lines) = parseStructuredResponseV2(response)
+            lastChoices = choices
             
             // 更新剧情上下文，包含新的对话内容
             if (isStoryInitialized) {
-                storyContext += "\n用户: $query\n陆沉: $response"
+                val merged = if (lines.isNotEmpty()) lines.joinToString("\n") else line
+                storyContext += "\n用户: $query\n陆沉: $merged"
                 logI("剧情上下文已更新")
             }
             
-            onResponse.invoke(response)
+            onResponse.invoke(if (lines.isNotEmpty()) lines.joinToString("\n") else line)
+        }
+    }
 
-            mLLmManager.textToSpeech(
-                text = response,
-                speed = 1.0f,
-                pitch = 1.0f
-            ) { audioFile ->
-                if (audioFile != null) {
-                    mLLmManager.getTTSManager().playAudio(audioFile)
+    private fun parseStructuredResponse(raw: String): Pair<String, List<BranchChoice>> {
+        return try {
+            val obj = JSONObject(raw)
+            val line = obj.optString("line", raw)
+            val arr = obj.optJSONArray("choices")
+            val list = mutableListOf<BranchChoice>()
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val c = arr.optJSONObject(i) ?: continue
+                    val id = c.optString("id").ifBlank { (i + 1).toString() }
+                    val label = c.optString("label", "选项${i + 1}")
+                    val prompt = c.optString("prompt", label)
+                    list.add(BranchChoice(id, label, prompt))
                 }
             }
+            Pair(line, list)
+        } catch (_: Exception) {
+            logI("结构化解析失败，按纯文本处理")
+            Pair(raw, emptyList())
+        }
+    }
+
+    private fun parseStructuredResponseV2(raw: String): Triple<String, List<BranchChoice>, List<String>> {
+        return try {
+            val obj = JSONObject(raw)
+            val line = obj.optString("line", raw)
+            val linesJson = obj.optJSONArray("lines")
+            val lines = mutableListOf<String>()
+            if (linesJson != null) {
+                for (i in 0 until linesJson.length()) {
+                    val s = linesJson.optString(i)
+                    if (s.isNotBlank()) lines.add(s)
+                }
+            }
+            val arr = obj.optJSONArray("choices")
+            val list = mutableListOf<BranchChoice>()
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val c = arr.optJSONObject(i) ?: continue
+                    val id = c.optString("id").ifBlank { (i + 1).toString() }
+                    val label = c.optString("label", "选项${i + 1}")
+                    val prompt = c.optString("prompt", label)
+                    list.add(BranchChoice(id, label, prompt))
+                }
+            }
+            Triple(line, list, lines)
+        } catch (_: Exception) {
+            val fallback = parseStructuredResponse(raw)
+            Triple(fallback.first, fallback.second, emptyList())
         }
     }
 

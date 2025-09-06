@@ -30,6 +30,14 @@ import com.xinqi.ui.theme.AildoTheme
 import com.xinqi.utils.common.ioScope
 import com.xinqi.utils.log.logI
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.draw.alpha
 
 /**
  * 人物交互界面
@@ -345,9 +353,14 @@ private fun ChatInterface(
     modifier: Modifier = Modifier
 ) {
     var userInput by remember { mutableStateOf("") }
-    var aiResponse by remember { mutableStateOf("") }
+    // 连续句子逐条展示的消息列表（最多保留2条，上一条淡出后移除）
+    data class MessageItem(val id: Long, val text: String, val isFading: Boolean)
+    val messages = remember { mutableStateListOf<MessageItem>() }
+    var nextId by remember { mutableStateOf(0L) }
     var isLoading by remember { mutableStateOf(false) }
+    var branchChoices by remember { mutableStateOf(LLMIntegrator.getBranchChoices().map { it.label to it.prompt }) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Card(
         modifier = modifier.imePadding(),
@@ -359,21 +372,117 @@ private fun ChatInterface(
             modifier = Modifier.padding(16.dp)
         ) {
             // 回复展示框
-            if (aiResponse.isNotEmpty()) {
-                Card(
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                messages.forEachIndexed { index, item ->
+                    val alpha by animateFloatAsState(
+                        targetValue = if (item.isFading) 0f else 1f,
+                        animationSpec = tween(durationMillis = 600),
+                        label = "fadeAlpha"
+                    )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = item.text,
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .alpha(alpha),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+
+            // 分支按钮（如果有）
+            if (branchChoices.isNotEmpty()) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = aiResponse,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    branchChoices.take(2).forEach { (label, prompt) ->
+                        Button(
+                            onClick = {
+                                if (!isLoading) {
+                                    isLoading = true
+                                    // 点击后立即隐藏本轮分支
+                                    branchChoices = emptyList()
+                                    LLMIntegrator.query(
+                                        context = context,
+                                        query = prompt,
+                                        onResponse = { response ->
+                                            // 将多行按顺序推入，累积显示所有句子，依次播放音频
+                                            val lines = response.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+                                            scope.launch {
+                                                // 改为在播放阶段逐条添加与移除，保证同一时间只显示一条对白
+                                                // 所有文字显示完成后，依次播放每句的音频（基于播放完成回调串联）
+                                                scope.launch {
+                                                    var index = 0
+                                                    fun playNext() {
+                                                        if (index >= lines.size) {
+                                                            isLoading = false
+                                                            branchChoices = LLMIntegrator.getBranchChoices().map { it.label to it.prompt }
+                                                            return
+                                                        }
+                                                        val line = lines[index]
+                                                        // 添加当前句子作为唯一可见条目
+                                                        messages.clear()
+                                                        messages.add(MessageItem(id = nextId++, text = line, isFading = false))
+                                                        LLMIntegrator.mLLmManager.textToSpeech(
+                                                            text = line,
+                                                            speed = 1.0f,
+                                                            pitch = 1.0f
+                                                        ) { audioFile ->
+                                                            if (audioFile != null) {
+                                                                LLMIntegrator.mLLmManager.getTTSManager().playAudio(audioFile) {
+                                                                    // 如果不是最后一句，则淡出后移除；最后一句保持驻留
+                                                                    val isLast = (index == lines.size - 1)
+                                                                    if (!isLast && messages.isNotEmpty()) {
+                                                                        val last = messages.last()
+                                                                        val idx = messages.lastIndex
+                                                                        messages[idx] = last.copy(isFading = true)
+                                                                        scope.launch {
+                                                                            delay(600)
+                                                                            messages.clear()
+                                                                            index += 1
+                                                                            playNext()
+                                                                        }
+                                                                    } else {
+                                                                        // 最后一句：不清空，等待下一轮开始时由新句替换
+                                                                        index += 1
+                                                                        playNext()
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                // 无音频也保持推进
+                                                                val isLast = (index == lines.size - 1)
+                                                                if (!isLast) messages.clear()
+                                                                index += 1
+                                                                playNext()
+                                                            }
+                                                        }
+                                                    }
+                                                    playNext()
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp)
+                        ) {
+                            Text(label)
+                        }
+                    }
                 }
             }
 
@@ -403,14 +512,67 @@ private fun ChatInterface(
                     onClick = {
                         if (userInput.isNotEmpty() && !isLoading) {
                             isLoading = true
-                            aiResponse = ""
+                            val toSend = userInput
+                            userInput = ""
 
                             LLMIntegrator.query(
                                 context = context,
-                                query = userInput,
+                                query = toSend,
                                 onResponse = { response ->
-                                    aiResponse = response
-                                    isLoading = false
+                                    // 将多行按顺序推入，累积显示所有句子，依次播放音频
+                                    val lines = response.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+                                    scope.launch {
+                                        // 改为在播放阶段逐条添加与移除，保证同一时间只显示一条对白
+                                        // 所有文字显示完成后，依次播放每句的音频（基于播放完成回调串联）
+                                        scope.launch {
+                                            var index = 0
+                                            fun playNext() {
+                                                if (index >= lines.size) {
+                                                    isLoading = false
+                                                    branchChoices = LLMIntegrator.getBranchChoices().map { it.label to it.prompt }
+                                                    return
+                                                }
+                                                val line = lines[index]
+                                                // 添加当前句子作为唯一可见条目
+                                                messages.clear()
+                                                messages.add(MessageItem(id = nextId++, text = line, isFading = false))
+                                                LLMIntegrator.mLLmManager.textToSpeech(
+                                                    text = line,
+                                                    speed = 1.0f,
+                                                    pitch = 1.0f
+                                                ) { audioFile ->
+                                                    if (audioFile != null) {
+                                                        LLMIntegrator.mLLmManager.getTTSManager().playAudio(audioFile) {
+                                                            // 如果不是最后一句，则淡出后移除；最后一句保持驻留
+                                                            val isLast = (index == lines.size - 1)
+                                                            if (!isLast && messages.isNotEmpty()) {
+                                                                val last = messages.last()
+                                                                val idx = messages.lastIndex
+                                                                messages[idx] = last.copy(isFading = true)
+                                                                scope.launch {
+                                                                    delay(600)
+                                                                    messages.clear()
+                                                                    index += 1
+                                                                    playNext()
+                                                                }
+                                                            } else {
+                                                                // 最后一句：不清空，等待下一轮开始时由新句替换
+                                                                index += 1
+                                                                playNext()
+                                                            }
+                                                        }
+                                                    } else {
+                                                        // 无音频也保持推进
+                                                        val isLast = (index == lines.size - 1)
+                                                        if (!isLast) messages.clear()
+                                                        index += 1
+                                                        playNext()
+                                                    }
+                                                }
+                                            }
+                                            playNext()
+                                        }
+                                    }
                                 }
                             )
                         }

@@ -275,6 +275,84 @@ class TTSManager private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * 播放音频文件（带完成回调）
+     */
+    fun playAudio(audioFile: File, onComplete: () -> Unit) {
+        if (isPlaying) {
+            logI("音频正在播放中")
+            return
+        }
+        
+        try {
+            val audioAttributes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            } else {
+                null
+            }
+            
+            audioTrack = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                AudioTrack.Builder()
+                    .setAudioAttributes(audioAttributes!!)
+                    .setAudioFormat(AudioFormat.Builder()
+                        .setSampleRate(SAMPLE_RATE)
+                        .setChannelMask(mChannel)
+                        .setEncoding(AUDIO_FORMAT)
+                        .build())
+                    .setBufferSizeInBytes(BUFFER_SIZE)
+                    .build()
+            } else {
+                AudioTrack(
+                    AudioManager.STREAM_MUSIC,
+                    SAMPLE_RATE,
+                    mChannel,
+                    AUDIO_FORMAT,
+                    BUFFER_SIZE,
+                    AudioTrack.MODE_STREAM
+                )
+            }
+            
+            isPlaying = true
+            notifyTTSStarted()
+            
+            playingJob = scope.launch {
+                try {
+                    audioTrack?.play()
+                    
+                    val audioData = audioFile.readBytes()
+                    val headerSize = 44 // WAV文件头大小
+                    val actualAudioData = audioData.copyOfRange(headerSize, audioData.size)
+                    
+                    audioTrack?.write(actualAudioData, 0, actualAudioData.size)
+                    
+                    audioTrack?.stop()
+                    audioTrack?.release()
+                    audioTrack = null
+                    
+                    isPlaying = false
+                    notifyTTSCompleted()
+                    onComplete()
+                    
+                } catch (e: Exception) {
+                    logE("播放音频失败: ${e.message}")
+                    isPlaying = false
+                    notifyError("播放音频失败: ${e.message}")
+                    onComplete()
+                }
+            }
+            
+            logI("开始播放音频: ${audioFile.absolutePath}")
+            
+        } catch (e: Exception) {
+            logE("初始化音频播放失败: ${e.message}")
+            notifyError("初始化音频播放失败: ${e.message}")
+            onComplete()
+        }
+    }
+
     fun stopPlayback() {
         if (!isPlaying) return
         

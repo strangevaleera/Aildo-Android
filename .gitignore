@@ -44,3 +44,30 @@
 local.properties
 /locals
 /locals/*
+
+# 构建产物
+app/release/
+app/build/
+*.apk
+*.aab
+*.dex
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+# 音频缓存
+audio_cache/
+tts_cache/
+
+# 开发工具配置
+.vscode/
+*.swp
+*.swo
+*~
+
+# 系统文件
+Thumbs.db
