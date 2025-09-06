@@ -1,4 +1,4 @@
-package com.xinqi.test
+package com.xinqi.ui.bluetooth
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -10,24 +10,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.xinqi.test.ui.BluetoothTestScreen
-import com.xinqi.test.ui.theme.BluetoothTestTheme
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xinqi.ui.bluetooth.ui.BluetoothManagerScreen
+import com.xinqi.ui.bluetooth.ui.BluetoothManagerTheme
+import com.xinqi.utils.bt.AildoBluetoothManager
 import com.xinqi.utils.log.logI
+import com.xinqi.utils.mcp.MCPIntegrationManager
 
-class TestMainActivity : ComponentActivity() {
+class BluetoothManagerActivity : ComponentActivity() {
     
     private val bluetoothPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val allGranted = permissions.values.all {
-            it
-        }
+        val allGranted = permissions.values.all { it }
         if (allGranted) {
-            logI("所有权限已经赋予")
-            // 权限已授予，可以开始蓝牙操作
+            logI("所有蓝牙权限已授予")
+        } else {
+            logI("部分蓝牙权限被拒绝")
         }
     }
     
@@ -35,7 +42,9 @@ class TestMainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            // 蓝牙已启用
+            logI("蓝牙已启用")
+        } else {
+            logI("蓝牙启用被拒绝")
         }
     }
     
@@ -46,14 +55,15 @@ class TestMainActivity : ComponentActivity() {
         checkAndRequestPermissions()
         
         setContent {
-            BluetoothTestTheme {
+            BluetoothManagerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    BluetoothTestScreen(
+                    BluetoothManagerScreen(
                         onRequestPermissions = { checkAndRequestPermissions() },
-                        onEnableBluetooth = { enableBluetooth() }
+                        onEnableBluetooth = { enableBluetooth() },
+                        onBack = { finish() }
                     )
                 }
             }
@@ -89,3 +99,4 @@ class TestMainActivity : ComponentActivity() {
         }
     }
 }
+

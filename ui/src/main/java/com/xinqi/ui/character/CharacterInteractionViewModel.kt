@@ -3,12 +3,14 @@ package com.xinqi.ui.character
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.xinqi.utils.bt.AildoBluetoothManager
 import com.xinqi.utils.log.logI
 import com.xinqi.utils.log.showResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * 人物交互界面的ViewModel
@@ -29,6 +31,36 @@ class CharacterInteractionViewModel : ViewModel() {
     // 蓝牙连接状态
     private val _bluetoothConnected = MutableStateFlow(false)
     val bluetoothConnected: StateFlow<Boolean> = _bluetoothConnected.asStateFlow()
+    
+    // 蓝牙管理器
+    private var bluetoothManager: AildoBluetoothManager? = null
+    
+    init {
+        // 启动蓝牙状态监听
+        startBluetoothStatusMonitoring()
+    }
+    
+    private fun startBluetoothStatusMonitoring() {
+        viewModelScope.launch {
+            while (true) {
+                try {
+                    bluetoothManager?.let { manager ->
+                        val isConnected = manager.isConnected()
+                        _bluetoothConnected.value = isConnected
+                        logI("蓝牙连接状态更新: $isConnected")
+                    }
+                } catch (e: Exception) {
+                    logI("检查蓝牙连接状态时出错: ${e.message}")
+                }
+                delay(2000) // 每2秒检查一次
+            }
+        }
+    }
+    
+    fun initializeBluetoothManager(context: Context) {
+        bluetoothManager = AildoBluetoothManager.getInstance(context)
+        logI("蓝牙管理器已初始化")
+    }
 
     /**
      * 选择角色
