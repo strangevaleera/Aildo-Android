@@ -102,7 +102,7 @@ class NLPManager private constructor(private val context: Context) {
             notifyError("模型未初始化: ${model.displayName}", model)
             return
         }
-        
+
         scope.launch {
             try {
                 logI("NLPManager.chat 协程开始执行")
@@ -111,9 +111,9 @@ class NLPManager private constructor(private val context: Context) {
                 
                 withContext(Dispatchers.Main) {
                     try {
-                        callback(response)
-                        logI("NLPManager.chat callback完成")
-                        notifyChatResponse(response, model)
+                    callback(response)
+                    logI("NLPManager.chat callback完成")
+                    notifyChatResponse(response, model)
                     } catch (e: Exception) {
                         logE("主线程回调异常: ${e.message}")
                         e.printStackTrace()
@@ -123,8 +123,8 @@ class NLPManager private constructor(private val context: Context) {
                 logE("聊天失败: ${e.message}")
                 e.printStackTrace()
                 try {
-                    withContext(Dispatchers.Main) {
-                        notifyError("聊天失败: ${e.message}", model)
+                withContext(Dispatchers.Main) {
+                    notifyError("聊天失败: ${e.message}", model)
                     }
                 } catch (e2: Exception) {
                     logE("错误通知失败: ${e2.message}")
